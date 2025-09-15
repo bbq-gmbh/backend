@@ -12,8 +12,7 @@ def register(
     user_in: UserCreate, user_service: UserServiceDep, auth_service: AuthServiceDep
 ):
     user = user_service.create_user(user_in)
-    access_token = auth_service.create_access_token(user)
-    refresh_token = auth_service.create_refresh_token(user)
+    access_token, refresh_token = auth_service.create_token_pair(user)
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -32,8 +31,7 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth_service.create_access_token(user)
-    refresh_token = auth_service.create_refresh_token(user)
+    access_token, refresh_token = auth_service.create_token_pair(user)
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 

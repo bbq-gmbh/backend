@@ -12,23 +12,22 @@ class AuthService:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
 
-    def create_access_token(self, user: User) -> str:
-        to_encode = {
-            "sub": str(user.id),
-            "validation_key": user.validation_key,
-            "exp": datetime.now(timezone.utc)
-            + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        }
-        return jwt.encode(
-            to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    def create_token_pair(self, user: User) -> tuple[str, str]:
+        """Creates a pair of access and refresh tokens."""
+        access_token = self._create_token(
+            user, expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
+        refresh_token = self._create_token(
+            user, expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+        return access_token, refresh_token
 
-    def create_refresh_token(self, user: User) -> str:
+    def _create_token(self, user: User, expires_delta: timedelta) -> str:
+        """Helper to create a token with a specific expiry."""
         to_encode = {
             "sub": str(user.id),
             "validation_key": user.validation_key,
-            "exp": datetime.now(timezone.utc)
-            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            "exp": datetime.now(timezone.utc) + expires_delta,
         }
         return jwt.encode(
             to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
