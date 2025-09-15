@@ -1,14 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
-from src.api.dependencies import CurrentUserService, DBSession
+from src.api.dependencies import UserServiceDep
 from src.schemas.user import UserCreate, UserResponse
 
 router = APIRouter()
 
 
-@router.post("/", response_model=UserResponse)
-def create_user(
-    *, session: DBSession, user_in: UserCreate, user_service: CurrentUserService
-):
-    user = user_service.create_user(user_in=user_in)
-    return user
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
+def create_user(user_in: UserCreate, user_service: UserServiceDep):
+    """
+    Create a new user.
+    """
+    return user_service.create_user(user_in=user_in)
