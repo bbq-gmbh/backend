@@ -96,6 +96,6 @@ class DoSomethingResponse(BaseModel):
     user: User
 
 
-@app.get("/users/do_something", response_model=DoSomethingResponse)
+@app.get("/do_something", response_model=DoSomethingResponse)
 def do_something(user_id: Annotated[str, Depends(with_user_id)]):
     return DoSomethingResponse(name=True, user=db[user_id])
