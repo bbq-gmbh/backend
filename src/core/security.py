@@ -8,6 +8,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-def get_password_hash(password: str) -> str:
+def hash_password(password: str) -> str:
     """Hashes a password using bcrypt."""
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")

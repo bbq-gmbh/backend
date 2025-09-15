@@ -2,7 +2,7 @@ import uuid
 
 from sqlmodel import Session, select
 
-from src.core.security import get_password_hash
+from src.core.security import hash_password
 from src.models.user import User
 from src.schemas.user import UserCreate
 
@@ -13,7 +13,7 @@ class UserRepository:
 
     def create_user(self, user_in: UserCreate) -> User:
         user = User(
-            username=user_in.username, password_hash=get_password_hash(user_in.password)
+            username=user_in.username, password_hash=hash_password(user_in.password)
         )
         self.session.add(user)
         self.session.commit()
