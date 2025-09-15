@@ -19,9 +19,10 @@ This document outlines the architecture and implementation requirements for tran
 - **Package Management**: uv
 
 ### Dependencies
-- `fastapi[standard]>=0.116.1`
-- `sqlmodel>=0.0.24`
-- `pyjwt>=2.10.1`
+- `bcrypt>=4.3.0`,
+- `fastapi[standard]>=0.116.1`,
+- `pyjwt>=2.10.1`,
+- `sqlmodel>=0.0.24`,
 
 ## Architecture
 
