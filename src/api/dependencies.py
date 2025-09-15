@@ -10,7 +10,6 @@ from src.repositories.user import UserRepository
 from src.services.auth import AuthService
 from src.services.user import UserService
 
-
 # Annotated dependencies for direct use
 DatabaseSession = Annotated[Session, Depends(get_session)]
 
@@ -68,4 +67,4 @@ def get_current_user(
     return user
 
 
-CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUserDep = Annotated[User, Depends(get_current_user)]

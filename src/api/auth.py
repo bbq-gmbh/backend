@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 
 from src.api.dependencies import (
-    AuthenticatedUserDep,
     AuthServiceDep,
+    CurrentUserDep,
     UserServiceDep,
 )
 from src.schemas.auth import LoginRequest, Token
@@ -40,6 +40,6 @@ def login(
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
-def logout_all(current_user: CurrentUser, user_service: UserServiceDep):
+def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep):
     """Logs out from all devices by invalidating all tokens."""
     user_service.invalidate_all_tokens(current_user)
