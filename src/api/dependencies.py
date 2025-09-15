@@ -10,14 +10,15 @@ from src.repositories.user import UserRepository
 from src.services.auth import AuthService
 from src.services.user import UserService
 
+
 # Annotated dependencies for direct use
-DBSession = Annotated[Session, Depends(get_session)]
+DatabaseSession = Annotated[Session, Depends(get_session)]
 
 bearer_scheme = HTTPBearer()
 
 
 # Provider functions using Annotated
-def get_user_repository(session: DBSession) -> UserRepository:
+def get_user_repository(session: DatabaseSession) -> UserRepository:
     """Provides a user repository dependency."""
     return UserRepository(session=session)
 
@@ -48,7 +49,15 @@ def get_current_user(
     token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     auth_service: AuthServiceDep,
 ) -> User:
-    """Gets the current user from a bearer token."""
+    """
+    Decodes the bearer token, retrieves the user from the database,
+    and validates the token's validation key against the user's.
+
+    Raises HTTPException for invalid credentials, user not found, or
+    mismatched validation key.
+
+    Returns the authenticated User model.
+    """
     user = auth_service.get_user_from_token(token.credentials)
     if not user:
         raise HTTPException(

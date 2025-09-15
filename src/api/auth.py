@@ -1,6 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 
-from src.api.dependencies import AuthServiceDep, CurrentUser, UserServiceDep
+from src.api.dependencies import (
+    AuthenticatedUserDep,
+    AuthServiceDep,
+    UserServiceDep,
+)
 from src.schemas.auth import LoginRequest, Token
 from src.schemas.user import UserCreate
 
