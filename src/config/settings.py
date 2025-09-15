@@ -6,33 +6,33 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _get_required_env(key: str) -> str:
+    """Gets an environment variable, raising an error if it's not set."""
+    value = os.getenv(key)
+    if value is None:
+        raise ValueError(f"Environment variable '{key}' not set.")
+    return value
+
+
 class Settings:
-    def __init__(self):
-        self.APP_NAME: str = os.getenv("APP_NAME", "fs-backend")
-        self.DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
+    """Application settings loaded from environment variables."""
 
-        database_url = os.getenv("DATABASE_URL")
-        if not database_url:
-            raise ValueError("DATABASE_URL environment variable not set")
-        self.DATABASE_URL: str = database_url
+    # Application settings
+    DEBUG: bool = _get_required_env("DEBUG").lower() in ("true", "1", "t")
 
-        jwt_secret_key = os.getenv("JWT_SECRET_KEY")
-        if not jwt_secret_key:
-            raise ValueError("JWT_SECRET_KEY environment variable not set")
-        self.JWT_SECRET_KEY: str = jwt_secret_key
+    # Database settings
+    DATABASE_URL: str = _get_required_env("DATABASE_URL")
 
-        self.JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-        self.ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
-            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
-        )
-        self.REFRESH_TOKEN_EXPIRE_DAYS: int = int(
-            os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
-        )
+    # JWT settings
+    JWT_SECRET_KEY: str = _get_required_env("JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = _get_required_env("JWT_ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
+        _get_required_env("ACCESS_TOKEN_EXPIRE_MINUTES")
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(_get_required_env("REFRESH_TOKEN_EXPIRE_DAYS"))
 
-        # CORS_ORIGINS should be a comma-separated string in the .env file
-        self.CORS_ORIGINS: list[str] = os.getenv(
-            "CORS_ORIGINS", "http://localhost:3000"
-        ).split(",")
+    # CORS settings
+    CORS_ORIGINS: list[str] = _get_required_env("CORS_ORIGINS").split(",")
 
 
 settings = Settings()
