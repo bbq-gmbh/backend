@@ -17,3 +17,8 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str

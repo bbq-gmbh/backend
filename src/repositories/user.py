@@ -28,6 +28,10 @@ class UserRepository:
         user.token_key = str(uuid.uuid4())
         self.session.add(user)
 
+    def update_password(self, user: User, new_password: str):
+        user.password_hash = hash_password(new_password)
+        self.session.add(user)
+
     def get_all_users(self) -> list[User]:
         """Retrieves all users from the database."""
         return list(self.session.exec(select(User)).all())

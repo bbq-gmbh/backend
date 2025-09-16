@@ -6,7 +6,11 @@ import logging
 from sqlmodel import Session
 
 from src.repositories.user import UserRepository
-from src.core.exceptions import UserAlreadyExistsError, ValidationError
+from src.core.exceptions import (
+    UserAlreadyExistsError,
+    ValidationError,
+    InvalidCredentialsError,
+)
 from src.schemas.user import UserCreate
 
 
@@ -66,3 +70,21 @@ class UserService:
     def get_all_users(self) -> list[User]:
         """Retrieves all users."""
         return self.user_repository.get_all_users()
+
+    def change_password(self, user: User, current_password: str, new_password: str):
+        # Verify current password
+        if not verify_password(current_password, user.password_hash):
+            raise InvalidCredentialsError()
+        # Basic new password validation (align with create_user rules)
+        if not new_password:
+            raise ValidationError("New password cannot be empty")
+        if len(new_password) < 8:
+            raise ValidationError("New password must be at least 8 characters")
+        if current_password == new_password:
+            raise ValidationError("New password must differ from current password")
+        # Persist hash & rotate token key to invalidate existing tokens
+        self.user_repository.update_password(user, new_password)
+        self.user_repository.rotate_token_key(user)
+        self._session.commit()
+        self._session.refresh(user)
+        self._log.info("user.password.changed id=%s", user.id)

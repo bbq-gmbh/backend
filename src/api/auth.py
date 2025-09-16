@@ -9,6 +9,7 @@ from src.api.dependencies import (
 from src.schemas.auth import LoginRequest, Token, TokenPair
 from src.core.exceptions import InvalidCredentialsError
 from src.schemas.user import UserCreate
+from src.schemas.user import PasswordChangeRequest
 
 router = APIRouter()
 
@@ -50,3 +51,17 @@ def refresh_token(user: UserFromRefreshTokenDep, auth_service: AuthServiceDep) -
     """Refreshes an access token using a valid refresh token."""
     new_access_token = auth_service.issue_access_token(user)
     return Token(token=new_access_token)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: PasswordChangeRequest,
+    current_user: CurrentUserDep,
+    user_service: UserServiceDep,
+) -> None:
+    """Changes the current user's password and invalidates existing tokens."""
+    user_service.change_password(
+        user=current_user,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
