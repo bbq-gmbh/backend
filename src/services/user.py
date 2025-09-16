@@ -80,9 +80,11 @@ class UserService:
     def change_password(self, user: User, current_password: str, new_password: str):
         if not verify_password(current_password, user.password_hash):
             raise InvalidCredentialsError()
+        
         self._validate_password(new_password)
         if current_password == new_password:
             raise ValidationError("New password must differ from current password")
+        
         self.user_repository.update_password(user, new_password)
         self.user_repository.rotate_token_key(user)
         self._session.commit()

@@ -22,7 +22,7 @@ class InvalidCredentialsError(DomainError):
 
 
 class TokenDecodeError(DomainError):
-    def __init__(self, reason: str = "invalid token"):
+    def __init__(self, reason: str = "Invalid token"):
         super().__init__(reason)
         self.reason = reason
 
