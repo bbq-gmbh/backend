@@ -4,14 +4,14 @@ from sqlmodel import Session, select
 
 from src.core.security import hash_password
 from src.models.user import User
-from src.schemas.user import CreateUserRequest
+from src.schemas.user import UserCreate
 
 
 class UserRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_user(self, user_in: CreateUserRequest) -> User:
+    def create_user(self, user_in: UserCreate) -> User:
         user = User(
             username=user_in.username, password_hash=hash_password(user_in.password)
         )
