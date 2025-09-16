@@ -108,10 +108,18 @@ def get_current_user(
     Returns the authenticated User model.
     """
     user = user_service.get_user_by_id(token_data.sub)
+    # Existence check
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # Token key match (handles global invalidation / rotation)
+    if user.token_key != token_data.key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalidated",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -136,6 +144,12 @@ def get_user_from_refresh_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if user.token_key != token_data.key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalidated",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user

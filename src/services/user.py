@@ -17,16 +17,22 @@ class UserService:
         self._log = logging.getLogger("app.user_service")
 
     def create_user(self, user_in: UserCreate) -> User:
-        # Basic validation (defer to Pydantic enhancements later if needed)
-        username = user_in.username.strip()
-        if len(username) < 3:
-            raise ValueError("Username too short")
-        # Uniqueness check
-        existing = self.user_repository.get_user_by_username(username)
-        if existing:
+        username = user_in.username
+
+        # Validate username basics (push richer rules to Pydantic later if needed)
+        if not username:
+            raise ValueError("Username cannot be empty")
+        if len(username) < 4:
+            raise ValueError("Username must be at least 4 characters")
+        if " " in username:
+            raise ValueError("Username cannot contain spaces")
+
+        # Uniqueness
+        if self.user_repository.get_user_by_username(username):
             self._log.info("user.create.duplicate username=%s", username)
             raise UserAlreadyExistsError(username)
-        user_in.username = username  # mutate for repository usage
+
+        # Persist
         user = self.user_repository.create_user(user_in)
         self._session.commit()
         self._session.refresh(user)
