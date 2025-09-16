@@ -14,7 +14,12 @@ from src.schemas.user import PasswordChangeRequest
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenPair)
+@router.post(
+    "/register",
+    name="Register User",
+    operation_id="registerUser",
+    response_model=TokenPair,
+)
 def register(
     user_in: UserCreate,
     user_service: UserServiceDep,
@@ -25,7 +30,12 @@ def register(
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post(
+    "/login",
+    name="Login User",
+    operation_id="loginUser",
+    response_model=TokenPair,
+)
 def login(
     login_data: LoginRequest,
     user_service: UserServiceDep,
@@ -40,20 +50,35 @@ def login(
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
-@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout-all",
+    name="Logout All Sessions",
+    operation_id="logoutAllSessions",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep) -> None:
     """Logs out from all devices by rotating the token key (invalidates all tokens)."""
     user_service.rotate_token_key(current_user)
 
 
-@router.post("/refresh", response_model=Token)
+@router.post(
+    "/refresh",
+    name="Refresh Access Token",
+    operation_id="refreshAccessToken",
+    response_model=Token,
+)
 def refresh_token(user: UserFromRefreshTokenDep, auth_service: AuthServiceDep) -> Token:
     """Refreshes an access token using a valid refresh token."""
     new_access_token = auth_service.issue_access_token(user)
     return Token(token=new_access_token)
 
 
-@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/change-password",
+    name="Change Password",
+    operation_id="changePassword",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def change_password(
     payload: PasswordChangeRequest,
     current_user: CurrentUserDep,

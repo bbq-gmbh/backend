@@ -6,7 +6,13 @@ from src.schemas.user import UserCreate, UserRead
 router = APIRouter()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserRead)
+@router.post(
+    "/",
+    name="Create User",
+    operation_id="createUser",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserRead,
+)
 def create_user(user_in: UserCreate, user_service: UserServiceDep):
     """
     Create a new user.
@@ -14,7 +20,9 @@ def create_user(user_in: UserCreate, user_service: UserServiceDep):
     return user_service.create_user(user_in=user_in)
 
 
-@router.get("/", response_model=list[UserRead])
+@router.get(
+    "/", name="List Users", operation_id="listUsers", response_model=list[UserRead]
+)
 def list_users(_: CurrentUserDep, user_service: UserServiceDep):
     """
     Get a list of all users. Requires authentication.
