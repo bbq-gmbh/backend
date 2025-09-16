@@ -25,3 +25,10 @@ class TokenDecodeError(DomainError):
     def __init__(self, reason: str = "invalid token"):
         super().__init__(reason)
         self.reason = reason
+
+
+class ValidationError(DomainError):
+    """Domain-level validation error (mapped to 422)."""
+
+    def __init__(self, message: str):
+        super().__init__(message)

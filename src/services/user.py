@@ -6,7 +6,7 @@ import logging
 from sqlmodel import Session
 
 from src.repositories.user import UserRepository
-from src.core.exceptions import UserAlreadyExistsError
+from src.core.exceptions import UserAlreadyExistsError, ValidationError
 from src.schemas.user import UserCreate
 
 
@@ -21,11 +21,18 @@ class UserService:
 
         # Validate username basics (push richer rules to Pydantic later if needed)
         if not username:
-            raise ValueError("Username cannot be empty")
+            raise ValidationError("Username cannot be empty")
         if len(username) < 4:
-            raise ValueError("Username must be at least 4 characters")
+            raise ValidationError("Username must be at least 4 characters")
         if " " in username:
-            raise ValueError("Username cannot contain spaces")
+            raise ValidationError("Username cannot contain spaces")
+
+        # Basic password validation (kept intentionally minimal; adjust as needed)
+        password = user_in.password
+        if not password:
+            raise ValidationError("Password cannot be empty")
+        if len(password) < 8:
+            raise ValidationError("Password must be at least 8 characters")
 
         # Uniqueness
         if self.user_repository.get_user_by_username(username):

@@ -9,6 +9,7 @@ from src.core.exceptions import (
     TokenDecodeError,
     UserAlreadyExistsError,
     UserNotFoundError,
+    ValidationError,
 )
 
 from src.api import auth, users
@@ -45,6 +46,11 @@ async def token_decode_handler(_, exc: TokenDecodeError):
     return JSONResponse(
         status_code=401, content={"detail": "Invalid authentication credentials"}
     )
+
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(_, exc: ValidationError):
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(DomainError)
