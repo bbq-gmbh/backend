@@ -11,13 +11,11 @@ from src.schemas.auth import TokenData
 from src.services.auth import AuthService
 from src.services.user import UserService
 
-# Annotated dependencies for direct use
-DatabaseSession = Annotated[Session, Depends(get_session)]
-
 bearer_scheme = HTTPBearer()
 
+DatabaseSession = Annotated[Session, Depends(get_session)]
 
-# Provider functions using Annotated
+
 def get_user_repository(session: DatabaseSession) -> UserRepository:
     """Provides a user repository dependency."""
     return UserRepository(session=session)
@@ -33,7 +31,6 @@ def get_user_service(
     return UserService(user_repository=user_repo)
 
 
-# Final dependency for path operation functions
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
