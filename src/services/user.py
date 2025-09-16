@@ -20,10 +20,11 @@ class UserService:
         self._session: Session = user_repository.session
         self._log = logging.getLogger("app.user_service")
 
-    def create_user(self, user_in: UserCreate) -> User:
-        username = user_in.username
+    def _validate_username(self, username: str):
+        """Validates username rules.
 
-        # Validate username basics (push richer rules to Pydantic later if needed)
+        Keep this in sync with any API documentation or client-side validation.
+        """
         if not username:
             raise ValidationError("Username cannot be empty")
         if len(username) < 4:
@@ -31,19 +32,24 @@ class UserService:
         if " " in username:
             raise ValidationError("Username cannot contain spaces")
 
-        # Basic password validation (kept intentionally minimal; adjust as needed)
-        password = user_in.password
+    def _validate_password(self, password: str):
+        """Validates password creation/update rules (length, non-empty).
+
+        NOTE: Keep in sync with any future policy (complexity, entropy, blacklist, etc.).
+        """
         if not password:
             raise ValidationError("Password cannot be empty")
         if len(password) < 8:
             raise ValidationError("Password must be at least 8 characters")
 
-        # Uniqueness
+    def create_user(self, user_in: UserCreate) -> User:
+        username = user_in.username
+
+        self._validate_username(username)
+        self._validate_password(user_in.password)
         if self.user_repository.get_user_by_username(username):
             self._log.info("user.create.duplicate username=%s", username)
             raise UserAlreadyExistsError(username)
-
-        # Persist
         user = self.user_repository.create_user(user_in)
         self._session.commit()
         self._session.refresh(user)
@@ -72,17 +78,11 @@ class UserService:
         return self.user_repository.get_all_users()
 
     def change_password(self, user: User, current_password: str, new_password: str):
-        # Verify current password
         if not verify_password(current_password, user.password_hash):
             raise InvalidCredentialsError()
-        # Basic new password validation (align with create_user rules)
-        if not new_password:
-            raise ValidationError("New password cannot be empty")
-        if len(new_password) < 8:
-            raise ValidationError("New password must be at least 8 characters")
+        self._validate_password(new_password)
         if current_password == new_password:
             raise ValidationError("New password must differ from current password")
-        # Persist hash & rotate token key to invalidate existing tokens
         self.user_repository.update_password(user, new_password)
         self.user_repository.rotate_token_key(user)
         self._session.commit()
