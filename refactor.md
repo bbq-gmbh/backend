@@ -307,6 +307,7 @@ Ordered actionable list for tracking (aligned with reduced scope):
 - JWT payload claim changes: `val`→`token_version`, `kind`→`token_kind`.
 - Method renames in AuthService and UserService; external API unchanged except for registration/login responses still returning token pair.
 - Manual DB reset required after refactor if persistent storage was previously used (no migration layer in scope).
+- Removed `is_active` field from `User` model and `UserRead` schema (not used; deactivation semantics out of scope). Requires database file recreation for SQLite.
 
 ---
 

@@ -10,7 +10,6 @@ class User(SQLModel, table=True):
     password_hash: str
     # token_version is incremented (or randomized) to invalidate previously issued tokens
     token_version: int = Field(default=1, index=True)
-    is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(

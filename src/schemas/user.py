@@ -12,7 +12,6 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     id: uuid.UUID
     username: str | None = None
-    is_active: bool | None = None
     is_superuser: bool | None = None
     created_at: datetime | None = None
 
