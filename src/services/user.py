@@ -24,3 +24,7 @@ class UserService:
 
     def invalidate_all_tokens(self, user: User):
         self.user_repository.update_validation_key(user)
+
+    def get_all_users(self) -> list[User]:
+        """Retrieves all users."""
+        return self.user_repository.get_all_users()

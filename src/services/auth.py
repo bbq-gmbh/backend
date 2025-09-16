@@ -49,3 +49,13 @@ class AuthService:
             return user
         except jwt.PyJWTError:
             return None
+
+    def refresh_access_token(self, refresh_token: str) -> Optional[str]:
+        """Validates a refresh token and issues a new access token."""
+        user = self.get_user_from_token(refresh_token)
+        if not user:
+            return None
+
+        return self._create_token(
+            user, expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        )

@@ -32,3 +32,7 @@ class UserRepository:
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
+
+    def get_all_users(self) -> list[User]:
+        """Retrieves all users from the database."""
+        return list(self.session.exec(select(User)).all())
