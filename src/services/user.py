@@ -44,13 +44,11 @@ class UserService:
             return None
         return user
 
-    def rotate_token_version(self, user: User):
-        self.user_repository.update_token_version(user)
+    def rotate_token_key(self, user: User):
+        self.user_repository.rotate_token_key(user)
         self._session.commit()
         self._session.refresh(user)
-        self._log.info(
-            "user.token.rotate id=%s new_version=%s", user.id, user.token_version
-        )
+        self._log.info("user.token.rotate id=%s new_key=%s", user.id, user.token_key)
 
     def get_all_users(self) -> list[User]:
         """Retrieves all users."""

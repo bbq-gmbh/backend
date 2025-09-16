@@ -41,10 +41,10 @@ class AuthService:
         now = datetime.now(timezone.utc)
         to_encode = {
             "sub": str(user.id),
-            "token_version": user.token_version,
+            "key": user.token_key,
             "iat": now,
             "exp": now + expires_delta,
-            "token_kind": token_kind,
+            "kind": token_kind,
         }
         return jwt.encode(
             to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
@@ -61,6 +61,6 @@ class AuthService:
 
     def get_user_from_token(self, token_data: TokenData) -> Optional[User]:
         user = self.user_service.get_user_by_id(token_data.sub)
-        if user is None or user.token_version != token_data.token_version:
+        if user is None or user.token_key != token_data.key:
             return None
         return user

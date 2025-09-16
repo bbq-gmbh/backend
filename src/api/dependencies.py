@@ -7,7 +7,7 @@ from sqlmodel import Session
 from src.config.database import get_session
 from src.models.user import User
 from src.repositories.user import UserRepository
-from src.schemas.auth import TokenData
+from src.schemas.auth import TokenData, TokenKind
 from src.services.auth import AuthService
 from src.services.user import UserService
 
@@ -66,7 +66,7 @@ def get_access_token_data(
     """
     Returns token data if it's an access token.
     """
-    if token_data.token_kind != "access":
+    if token_data.kind != TokenKind.ACCESS:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type, expected access token",
@@ -84,7 +84,7 @@ def get_refresh_token_data(
     """
     Returns token data if it's a refresh token.
     """
-    if token_data.token_kind != "refresh":
+    if token_data.kind != TokenKind.REFRESH:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type, expected refresh token",

@@ -2,6 +2,7 @@ from sqlmodel import Session, select
 
 from src.core.security import hash_password
 from src.models.user import User
+import uuid
 from src.schemas.user import UserCreate
 
 
@@ -23,8 +24,8 @@ class UserRepository:
         statement = select(User).where(User.username == username)
         return self.session.exec(statement).first()
 
-    def update_token_version(self, user: User):
-        user.token_version += 1
+    def rotate_token_key(self, user: User):
+        user.token_key = str(uuid.uuid4())
         self.session.add(user)
 
     def get_all_users(self) -> list[User]:

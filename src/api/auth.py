@@ -41,8 +41,8 @@ def login(
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep) -> None:
-    """Logs out from all devices by rotating the token version."""
-    user_service.rotate_token_version(current_user)
+    """Logs out from all devices by rotating the token key (invalidates all tokens)."""
+    user_service.rotate_token_key(current_user)
 
 
 @router.post("/refresh", response_model=Token)
