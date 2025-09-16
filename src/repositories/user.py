@@ -1,5 +1,3 @@
-import uuid
-
 from sqlmodel import Session, select
 
 from src.core.security import hash_password
@@ -16,8 +14,6 @@ class UserRepository:
             username=user_in.username, password_hash=hash_password(user_in.password)
         )
         self.session.add(user)
-        self.session.commit()
-        self.session.refresh(user)
         return user
 
     def get_user_by_id(self, user_id: str) -> User | None:
@@ -27,11 +23,9 @@ class UserRepository:
         statement = select(User).where(User.username == username)
         return self.session.exec(statement).first()
 
-    def update_validation_key(self, user: User):
-        user.validation_key = str(uuid.uuid4())
+    def update_token_version(self, user: User):
+        user.token_version += 1
         self.session.add(user)
-        self.session.commit()
-        self.session.refresh(user)
 
     def get_all_users(self) -> list[User]:
         """Retrieves all users from the database."""

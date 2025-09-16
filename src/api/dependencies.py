@@ -46,14 +46,8 @@ def get_token_data(
     token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
     auth_service: AuthServiceDep,
 ) -> TokenData:
-    """
-    Decodes the bearer token and retrieves the token data.
-
-    Raises HTTPException for invalid credentials.
-
-    Returns the TokenData schema.
-    """
-    data = auth_service.get_token_data(token.credentials)
+    """Decodes the bearer token and retrieves the token data."""
+    data = auth_service.decode_token(token.credentials)
     if not data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +66,7 @@ def get_access_token_data(
     """
     Returns token data if it's an access token.
     """
-    if token_data.kind != "access":
+    if token_data.token_kind != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type, expected access token",
@@ -90,7 +84,7 @@ def get_refresh_token_data(
     """
     Returns token data if it's a refresh token.
     """
-    if token_data.kind != "refresh":
+    if token_data.token_kind != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type, expected refresh token",

@@ -14,43 +14,43 @@ class AuthService:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
 
-    def create_token_pair(self, user: User) -> tuple[str, str]:
-        """Creates a pair of access and refresh tokens."""
-        access_token = self._create_token(
+    def issue_token_pair(self, user: User) -> tuple[str, str]:
+        """Issues a pair of access and refresh tokens."""
+        access_token = self._encode_jwt(
             user,
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-            kind="access",
+            token_kind="access",
         )
-        refresh_token = self._create_token(
+        refresh_token = self._encode_jwt(
             user,
             expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
-            kind="refresh",
+            token_kind="refresh",
         )
         return access_token, refresh_token
 
-    def create_access_token(self, user: User) -> str:
+    def issue_access_token(self, user: User) -> str:
         """Issues a new access token for a user."""
-        return self._create_token(
+        return self._encode_jwt(
             user,
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-            kind="access",
+            token_kind="access",
         )
 
-    def _create_token(self, user: User, expires_delta: timedelta, kind: str) -> str:
+    def _encode_jwt(self, user: User, expires_delta: timedelta, token_kind: str) -> str:
         """Helper to create a token with a specific expiry."""
         now = datetime.now(timezone.utc)
         to_encode = {
             "sub": str(user.id),
-            "val": user.validation_key,
+            "token_version": user.token_version,
             "iat": now,
             "exp": now + expires_delta,
-            "kind": kind,
+            "token_kind": token_kind,
         }
         return jwt.encode(
             to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
         )
 
-    def get_token_data(self, token: str) -> Optional[TokenData]:
+    def decode_token(self, token: str) -> Optional[TokenData]:
         try:
             payload = jwt.decode(
                 token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
@@ -61,6 +61,6 @@ class AuthService:
 
     def get_user_from_token(self, token_data: TokenData) -> Optional[User]:
         user = self.user_service.get_user_by_id(token_data.sub)
-        if user is None or user.validation_key != token_data.val:
+        if user is None or user.token_version != token_data.token_version:
             return None
         return user

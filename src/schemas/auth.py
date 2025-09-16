@@ -11,10 +11,10 @@ class TokenKind(str, Enum):
 
 class TokenData(BaseModel):
     sub: str
-    val: str
+    token_version: int
     iat: datetime
     exp: datetime
-    kind: TokenKind
+    token_kind: TokenKind
 
 
 class TokenType(str, Enum):

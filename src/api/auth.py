@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
 from src.api.dependencies import (
     AuthServiceDep,
@@ -7,19 +7,20 @@ from src.api.dependencies import (
     UserServiceDep,
 )
 from src.schemas.auth import LoginRequest, Token, TokenPair
-from src.schemas.user import CreateUserRequest
+from src.core.exceptions import InvalidCredentialsError
+from src.schemas.user import UserCreate
 
 router = APIRouter()
 
 
 @router.post("/register", response_model=TokenPair)
 def register(
-    user_in: CreateUserRequest,
+    user_in: UserCreate,
     user_service: UserServiceDep,
     auth_service: AuthServiceDep,
 ) -> TokenPair:
     user = user_service.create_user(user_in)
-    access_token, refresh_token = auth_service.create_token_pair(user)
+    access_token, refresh_token = auth_service.issue_token_pair(user)
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -33,23 +34,19 @@ def login(
         username=login_data.username, password=login_data.password
     )
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token, refresh_token = auth_service.create_token_pair(user)
+        raise InvalidCredentialsError()
+    access_token, refresh_token = auth_service.issue_token_pair(user)
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep) -> None:
-    """Logs out from all devices by invalidating all tokens."""
-    user_service.invalidate_all_tokens(current_user)
+    """Logs out from all devices by rotating the token version."""
+    user_service.rotate_token_version(current_user)
 
 
 @router.post("/refresh", response_model=Token)
 def refresh_token(user: UserFromRefreshTokenDep, auth_service: AuthServiceDep) -> Token:
     """Refreshes an access token using a valid refresh token."""
-    new_access_token = auth_service.create_access_token(user)
+    new_access_token = auth_service.issue_access_token(user)
     return Token(token=new_access_token)

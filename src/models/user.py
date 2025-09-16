@@ -8,7 +8,8 @@ class User(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     username: str = Field(unique=True, index=True)
     password_hash: str
-    validation_key: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # token_version is incremented (or randomized) to invalidate previously issued tokens
+    token_version: int = Field(default=1, index=True)
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
