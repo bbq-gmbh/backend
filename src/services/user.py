@@ -49,13 +49,17 @@ class UserService:
 
         self._validate_username(username)
         self._validate_password(user_in.password)
+
         if self.user_repository.get_user_by_username(username):
             self._log.info("user.create.duplicate username=%s", username)
             raise UserAlreadyExistsError(username)
+
         user = self.user_repository.create_user(user_in)
         self._session.commit()
         self._session.refresh(user)
+
         self._log.info("user.create.success id=%s username=%s", user.id, username)
+
         return user
 
     def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
@@ -65,14 +69,17 @@ class UserService:
         user = self.user_repository.get_user_by_username(username)
         if not user:
             return None
+
         if not verify_password(password, user.password_hash):
             return None
+
         return user
 
     def rotate_token_key(self, user: User):
         self.user_repository.rotate_token_key(user)
         self._session.commit()
         self._session.refresh(user)
+
         self._log.info("user.token.rotate id=%s new_key=%s", user.id, user.token_key)
 
     def get_all_users(self) -> list[User]:
@@ -91,4 +98,5 @@ class UserService:
         self.user_repository.rotate_token_key(user)
         self._session.commit()
         self._session.refresh(user)
+
         self._log.info("user.password.changed id=%s", user.id)
