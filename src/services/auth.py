@@ -41,7 +41,7 @@ class AuthService:
         now = datetime.now(timezone.utc)
         to_encode = {
             "sub": str(user.id),
-            "key": user.token_key,
+            "key": str(user.token_key),
             "iat": now,
             "exp": now + expires_delta,
             "kind": token_kind,
