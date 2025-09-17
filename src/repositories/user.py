@@ -1,8 +1,9 @@
+import uuid
+
 from sqlmodel import Session, select
 
 from src.core.security import hash_password
 from src.models.user import User
-import uuid
 from src.schemas.user import UserCreate
 
 
@@ -25,7 +26,7 @@ class UserRepository:
         return self.session.exec(statement).first()
 
     def rotate_token_key(self, user: User):
-        user.token_key = str(uuid.uuid4())
+        user.token_key = uuid.uuid4()
         self.session.add(user)
 
     def update_password(self, user: User, new_password: str):
