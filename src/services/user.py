@@ -1,8 +1,10 @@
+import uuid
+import logging
+
 from typing import Optional
 
 from src.core.security import verify_password
 from src.models.user import User
-import logging
 from sqlmodel import Session
 
 from src.repositories.user import UserRepository
@@ -56,7 +58,7 @@ class UserService:
         self._log.info("user.create.success id=%s username=%s", user.id, username)
         return user
 
-    def get_user_by_id(self, user_id: str) -> Optional[User]:
+    def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
         return self.user_repository.get_user_by_id(user_id)
 
     def authenticate_user(self, username: str, password: str) -> Optional[User]:

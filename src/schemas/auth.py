@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import datetime
 from enum import Enum
 
@@ -10,8 +12,8 @@ class TokenKind(str, Enum):
 
 
 class TokenData(BaseModel):
-    sub: str
-    key: str
+    sub: uuid.UUID
+    key: uuid.UUID
     iat: datetime
     exp: datetime
     kind: TokenKind

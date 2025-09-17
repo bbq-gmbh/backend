@@ -18,7 +18,7 @@ class UserRepository:
         self.session.add(user)
         return user
 
-    def get_user_by_id(self, user_id: str) -> User | None:
+    def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         return self.session.get(User, user_id)
 
     def get_user_by_username(self, username: str) -> User | None:
