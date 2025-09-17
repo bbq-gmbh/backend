@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from sqlmodel import Session, select
 
@@ -18,10 +19,10 @@ class UserRepository:
         self.session.add(user)
         return user
 
-    def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
+    def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
         return self.session.get(User, user_id)
 
-    def get_user_by_username(self, username: str) -> User | None:
+    def get_user_by_username(self, username: str) -> Optional[User]:
         statement = select(User).where(User.username == username)
         return self.session.exec(statement).first()
 
