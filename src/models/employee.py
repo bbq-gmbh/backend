@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -12,4 +12,4 @@ class Employee(SQLModel, table=True):
     first_name: str
     last_name: str
 
-    user: Optional["User"] = Relationship(back_populates="employee")
+    user: "User" = Relationship(back_populates="employee")
