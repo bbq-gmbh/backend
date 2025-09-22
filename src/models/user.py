@@ -1,7 +1,11 @@
 import uuid
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime, timezone
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from .employee import Employee
 
 
 class User(SQLModel, table=True):
@@ -16,3 +20,6 @@ class User(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
+
+    employee_id: uuid.UUID = Field(default=None, foreign_key="employees.id")
+    employee: Optional["Employee"] = Relationship(back_populates="user")
