@@ -21,5 +21,7 @@ class User(SQLModel, table=True):
         sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
-    employee_id: uuid.UUID = Field(default=None, foreign_key="employees.id")
+    employee_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="employees.id", unique=True
+    )
     employee: Optional["Employee"] = Relationship(back_populates="user")
