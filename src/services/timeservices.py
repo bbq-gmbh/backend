@@ -56,3 +56,4 @@ class TimeServices:
         """
         total_work_hours = work_hours  # Simplified as the condition was redundant
         return self.calculate_break(total_work_hours)
+    # add DB connection here if needed
