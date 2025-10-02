@@ -7,9 +7,11 @@ from sqlmodel import Session
 from src.config.database import get_session
 from src.models.user import User
 from src.repositories.user import UserRepository
+from src.repositories.time_record import TimeRecordRepository
 from src.schemas.auth import TokenData, TokenKind
 from src.services.auth import AuthService
 from src.services.user import UserService
+from src.services.time_record import TimeRecordService
 
 bearer_scheme = HTTPBearer()
 
@@ -156,3 +158,25 @@ def get_user_from_refresh_token(
 
 
 UserFromRefreshTokenDep = Annotated[User, Depends(get_user_from_refresh_token)]
+
+
+def get_time_record_repository(
+    session: DatabaseSession,
+) -> TimeRecordRepository:
+    """Provides a time record repository dependency."""
+    return TimeRecordRepository(session=session)
+
+
+TimeRecordRepositoryDep = Annotated[
+    TimeRecordRepository, Depends(get_time_record_repository)
+]
+
+
+def get_time_record_service(
+    time_record_repo: TimeRecordRepositoryDep,
+) -> TimeRecordService:
+    """Provides a time record service dependency."""
+    return TimeRecordService(user_repository=time_record_repo)
+
+
+TimeRecordServiceDep = Annotated[TimeRecordService, Depends(get_time_record_service)]
