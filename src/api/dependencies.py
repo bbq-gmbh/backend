@@ -156,3 +156,5 @@ def get_user_from_refresh_token(
 
 
 UserFromRefreshTokenDep = Annotated[User, Depends(get_user_from_refresh_token)]
+
+
