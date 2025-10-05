@@ -158,3 +158,23 @@ def get_user_from_refresh_token(
 UserFromRefreshTokenDep = Annotated[User, Depends(get_user_from_refresh_token)]
 
 
+def get_overtime_record_repository(
+    session: DatabaseSession,
+) -> OvertimeRecordRepository:
+    """Provides a time record repository dependency."""
+    return TimeRecordRepository(session=session)
+
+
+TimeRecordRepositoryDep = Annotated[
+    OvertimeRecordRepository, Depends(get_overtime_record_repository)
+]
+
+
+def get_overtime_record_service(
+    time_record_repo: TimeRecordRepositoryDep,
+) -> OvertimeRecordService:
+    """Provides a time record service dependency."""
+    return OvertimeRecordService(user_repository=time_record_repo)
+
+
+overtimeRecordServiceDep = Annotated[OvertimeRecordService, Depends(get_overtime_record_service)]
