@@ -25,12 +25,9 @@ class TimeRecordService:
             Returns:
             OvertimeRecord: The created overtime record.
         """
-
-        # 1. Arbeitszeit berechnen
         total_work_time = work_end - work_start
         total_hours = total_work_time.total_seconds() / 3600
 
-        # 2. Pausenregel anwenden
         if user.age < 18:
             break_minutes = 60
         else:
@@ -43,10 +40,9 @@ class TimeRecordService:
 
         net_hours = total_hours - (break_minutes / 60)
 
-        # 3. Überstunden berechnen
+
         overtime_hours = max(0, net_hours - expected_hours)
 
-        # 4. OvertimeRecord speichern
         overtime_record = OvertimeRecord(
             user_id=user.id,
             date=work_start.date(),
