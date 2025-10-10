@@ -1,67 +1,38 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 
-from app.core.exceptions import (
-    DomainError,
-    InvalidCredentialsError,
-    TokenDecodeError,
-    UserAlreadyExistsError,
-    UserNotFoundError,
-    ValidationError,
-)
-
-from app.api import auth, users
+from app.api.api import register_routes
 from app.config.database import engine
+from app.core.exception_handlers import register_exception_handlers
 from app.models.user import User
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
+    # Startup: Create database tables
     User.metadata.create_all(engine)
     yield
+    # Shutdown: Add cleanup logic here if needed
 
 
-app = FastAPI(lifespan=lifespan)
+# Initialize FastAPI application
+app = FastAPI(
+    title="fs-backend",
+    description="Minimal FastAPI + SQLModel auth + users service",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# Register exception handlers
+register_exception_handlers(app)
+
+# Register API routes
+register_routes(app)
 
 
-@app.exception_handler(UserAlreadyExistsError)
-async def user_exists_handler(_, exc: UserAlreadyExistsError):
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(UserNotFoundError)
-async def user_not_found_handler(_, exc: UserNotFoundError):
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(InvalidCredentialsError)
-async def invalid_credentials_handler(_, exc: InvalidCredentialsError):
-    return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-
-@app.exception_handler(TokenDecodeError)
-async def token_decode_handler(_, exc: TokenDecodeError):
-    return JSONResponse(
-        status_code=401, content={"detail": "Invalid authentication credentials"}
-    )
-
-
-@app.exception_handler(ValidationError)
-async def validation_error_handler(_, exc: ValidationError):
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(DomainError)
-async def generic_domain_error_handler(_, exc: DomainError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-app.include_router(users.router, prefix="/users", tags=["users"])
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-
-
-@app.get("/")
+@app.get("/", tags=["health"])
 async def read_root() -> dict[str, str]:
+    """Root endpoint - health check and welcome message."""
     return {"message": "Welcome to the User API"}

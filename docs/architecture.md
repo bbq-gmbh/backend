@@ -225,17 +225,24 @@ fs-backend is a lightweight FastAPI-based authentication and user management ser
 ## Project Structure
 ```
 backend/
-├── src/
-│   ├── api/              # HTTP layer
-│   ├── services/         # Business logic
-│   ├── repositories/     # Data access
-│   ├── models/           # Database entities
-│   ├── schemas/          # DTOs
-│   ├── core/             # Exceptions, security
-│   └── config/           # Settings, DB setup
-├── docs/                 # This directory
-├── tests/                # Test suite (to be added)
-└── main.py               # Application entry point
+├── app/
+│   ├── main.py                      # Application entry point (clean!)
+│   ├── api/                         # HTTP layer
+│   │   ├── router.py               # Route registration
+│   │   ├── auth.py                 # Auth endpoints
+│   │   ├── users.py                # User endpoints
+│   │   └── dependencies.py         # Shared dependencies
+│   ├── services/                    # Business logic
+│   ├── repositories/                # Data access
+│   ├── models/                      # Database entities
+│   ├── schemas/                     # DTOs
+│   ├── core/                        # Cross-cutting concerns
+│   │   ├── exception_handlers.py  # Exception → HTTP mapping
+│   │   ├── exceptions.py           # Domain exceptions
+│   │   └── security.py             # JWT, passwords
+│   └── config/                      # Settings, DB setup
+├── docs/                            # This directory
+└── tests/                           # Test suite (to be added)
 ```
 
 ## References
