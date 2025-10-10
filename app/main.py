@@ -33,5 +33,5 @@ register_routes(app)
 
 
 @app.get("/", tags=["health"])
-async def read_root():
+async def read_root() -> None:
     return
