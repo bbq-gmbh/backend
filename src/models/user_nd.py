@@ -8,6 +8,8 @@ from enum import Enum
 from sqlalchemy import Column, ForeignKey, Enum as SAEnum
 from typing import Optional, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .employee_nd import Employee
 
 
 class User(SQLModel, table=True):

@@ -9,7 +9,7 @@ from sqlalchemy import Column, ForeignKey, Enum as SAEnum
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .user import User
+    from .employee import Employee
 
 class TimeRecordType(Enum):
     Arrival = "arrival"

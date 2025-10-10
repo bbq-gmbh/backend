@@ -8,6 +8,10 @@ from enum import Enum
 from sqlalchemy import Column, ForeignKey, Enum as SAEnum
 from typing import Optional, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .user_nd import User
+    from .time_entry_nd import TimeEntry
+
 
 class Employee(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
