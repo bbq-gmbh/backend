@@ -4,10 +4,10 @@ from typing import Optional
 import jwt
 from pydantic import ValidationError
 
-from src.config.settings import settings
-from src.models.user import User
-from src.schemas.auth import TokenData
-from src.services.user import UserService
+from app.config.settings import settings
+from app.models.user import User
+from app.schemas.auth import TokenData
+from app.services.user import UserService
 
 
 class AuthService:
