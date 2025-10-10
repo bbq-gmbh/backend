@@ -3,16 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.api import register_routes
-from app.config.database import engine
+from app.config.database import init_db
 from app.core.exception_handlers import register_exception_handlers
-from app.models.user import User
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown events."""
-    # Startup: Create database tables
-    User.metadata.create_all(engine)
+    # Startup: Initialize database (create all tables)
+    init_db()
     yield
     # Shutdown: Add cleanup logic here if needed
 
