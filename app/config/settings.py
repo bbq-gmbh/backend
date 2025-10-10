@@ -17,9 +17,6 @@ def _get_required_env(key: str) -> str:
 class Settings:
     """Application settings loaded from environment variables."""
 
-    # Application settings
-    DEBUG: bool = _get_required_env("DEBUG").lower() in ("true", "1", "t")
-
     # Database settings
     DATABASE_URL: str = _get_required_env("DATABASE_URL")
 

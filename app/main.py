@@ -33,6 +33,5 @@ register_routes(app)
 
 
 @app.get("/", tags=["health"])
-async def read_root() -> dict[str, str]:
-    """Root endpoint - health check and welcome message."""
-    return {"message": "Welcome to the User API"}
+async def read_root():
+    return
