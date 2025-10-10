@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 
-from src.api.dependencies import CurrentUserDep, UserServiceDep
-from src.schemas.user import UserCreate, UserRead
+from app.api.dependencies import CurrentUserDep, UserServiceDep
+from app.schemas.user import UserCreate, UserRead
 
 router = APIRouter()
 

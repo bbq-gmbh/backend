@@ -5,7 +5,7 @@ Minimal FastAPI + SQLModel auth + users service.
 ## Run
 ```bash
 uv sync
-uv run fastapi dev --port 3001 src/main.py
+uv run fastapi dev --port 3001 app/main.py
 ```
 App: http://127.0.0.1:3001
 

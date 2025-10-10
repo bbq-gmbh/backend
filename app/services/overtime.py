@@ -1,7 +1,7 @@
 from sqlmodel import Session
 
-from src.models.user import User
-from src.repositories.overtime import OvertimeRecord
+from app.models.user import User
+from app.repositories.overtime import OvertimeRecord
 from datetime import datetime
 
 class TimeRecordService:

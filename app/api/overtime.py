@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 
-from src.api.dependencies import CurrentUserDep, TimeRecordServiceDep
+from app.api.dependencies import CurrentUserDep, TimeRecordServiceDep
 
 
 router = APIRouter()

@@ -4,12 +4,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
-from src.config.database import get_session
-from src.models.user import User
-from src.repositories.user import UserRepository
-from src.schemas.auth import TokenData, TokenKind
-from src.services.auth import AuthService
-from src.services.user import UserService
+from app.config.database import get_session
+from app.models.user import User
+from app.repositories.user import UserRepository
+from app.schemas.auth import TokenData, TokenKind
+from app.services.auth import AuthService
+from app.services.user import UserService
 
 bearer_scheme = HTTPBearer()
 
