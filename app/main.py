@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from src.core.exceptions import (
+from app.core.exceptions import (
     DomainError,
     InvalidCredentialsError,
     TokenDecodeError,
@@ -12,9 +12,9 @@ from src.core.exceptions import (
     ValidationError,
 )
 
-from src.api import auth, users
-from src.config.database import engine
-from src.models.user import User
+from app.api import auth, users
+from app.config.database import engine
+from app.models.user import User
 
 
 @asynccontextmanager

@@ -1,15 +1,15 @@
 from fastapi import APIRouter, status
 
-from src.api.dependencies import (
+from app.api.dependencies import (
     AuthServiceDep,
     CurrentUserDep,
     UserFromRefreshTokenDep,
     UserServiceDep,
 )
-from src.schemas.auth import LoginRequest, Token, TokenPair
-from src.core.exceptions import InvalidCredentialsError
-from src.schemas.user import UserCreate
-from src.schemas.user import PasswordChangeRequest
+from app.schemas.auth import LoginRequest, Token, TokenPair
+from app.core.exceptions import InvalidCredentialsError
+from app.schemas.user import UserCreate
+from app.schemas.user import PasswordChangeRequest
 
 router = APIRouter()
 

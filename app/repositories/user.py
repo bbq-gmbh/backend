@@ -3,9 +3,9 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
-from src.core.security import hash_password
-from src.models.user import User
-from src.schemas.user import UserCreate
+from app.core.security import hash_password
+from app.models.user import User
+from app.schemas.user import UserCreate
 
 
 class UserRepository:

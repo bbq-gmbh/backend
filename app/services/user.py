@@ -3,17 +3,17 @@ import logging
 
 from typing import Optional
 
-from src.core.security import verify_password
-from src.models.user import User
+from app.core.security import verify_password
+from app.models.user import User
 from sqlmodel import Session
 
-from src.repositories.user import UserRepository
-from src.core.exceptions import (
+from app.repositories.user import UserRepository
+from app.core.exceptions import (
     UserAlreadyExistsError,
     ValidationError,
     InvalidCredentialsError,
 )
-from src.schemas.user import UserCreate
+from app.schemas.user import UserCreate
 
 
 class UserService:
