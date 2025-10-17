@@ -19,4 +19,4 @@ COPY app ./app
 EXPOSE 3001
 
 # Run the application
-CMD ["uv", "run", "fastapi", "dev", "--host", "0.0.0.0", "--port", "3001", "app/main.py"]
+CMD ["uv", "run", "fastapi", "run", "--host", "0.0.0.0", "--port", "3001", "app/main.py"]
