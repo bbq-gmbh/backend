@@ -20,6 +20,13 @@ class UserNotFoundError(DomainError):
         self.username = username
 
 
+class EmployeeExistsError(DomainError):
+    """Raised when attempting to create an employee for a user that already has one."""
+
+    def __init__(self):
+        super().__init__("Employee already exists for this user")
+
+
 class InvalidCredentialsError(DomainError):
     """Raised when authentication fails due to invalid credentials."""
 

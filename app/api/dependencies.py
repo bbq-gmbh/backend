@@ -6,14 +6,19 @@ from sqlmodel import Session
 
 from app.config.database import get_session
 from app.models.user import User
+from app.repositories.employee import EmployeeRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData, TokenKind
 from app.services.auth import AuthService
+from app.services.employee import EmployeeService
 from app.services.user import UserService
 
 bearer_scheme = HTTPBearer()
 
 DatabaseSession = Annotated[Session, Depends(get_session)]
+
+
+# User
 
 
 def get_user_repository(session: DatabaseSession) -> UserRepository:
@@ -32,6 +37,28 @@ def get_user_service(
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+# Employee
+
+
+def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
+    """Provides an employee repository dependency."""
+    return EmployeeRepository(user_repository=user_repo)
+
+
+EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
+
+
+def get_employee_service(employee_repo: EmployeeRepositoryDep) -> EmployeeService:
+    """Provides an employee service dependency."""
+    return EmployeeService(employee_repository=employee_repo)
+
+
+EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
+
+
+# Auth
 
 
 def get_auth_service(user_service: UserServiceDep) -> AuthService:
