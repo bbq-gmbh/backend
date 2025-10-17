@@ -10,6 +10,7 @@ class EmployeeRepository:
 
     def create_employee(self, employee_in: EmployeeCreate) -> Employee:
         employee = Employee(
+            user_id=employee_in.user_id,
             first_name=employee_in.first_name,
             last_name=employee_in.last_name,
         )

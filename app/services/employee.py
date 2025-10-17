@@ -3,7 +3,7 @@ from typing import Optional
 from app.core.exceptions import EmployeeExistsError, UserNotFoundError
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
-from app.schemas.employee import EmployeeCreateForUser
+from app.schemas.employee import EmployeeCreate
 
 
 class EmployeeService:
@@ -12,7 +12,7 @@ class EmployeeService:
         self.user_repository = employee_repository.user_repository
         self.session = self.user_repository.session
 
-    def create_employee_for_user(self, employee_in: EmployeeCreateForUser) -> Employee:
+    def create_employee_for_user(self, employee_in: EmployeeCreate) -> Employee:
         user = self.user_repository.get_user_by_id(employee_in.user_id)
         if not user:
             raise UserNotFoundError(user_id=employee_in.user_id)

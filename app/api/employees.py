@@ -1,9 +1,8 @@
 import uuid
 from fastapi import APIRouter, status
 
-from app.api.dependencies import CurrentUserDep, EmployeeServiceDep, UserServiceDep
-from app.schemas.employee import EmployeeCreateForUser
-from app.schemas.user import UserCreate, UserRead
+from app.api.dependencies import CurrentUserDep, EmployeeServiceDep
+from app.schemas.employee import EmployeeCreate
 
 router = APIRouter()
 
@@ -33,7 +32,7 @@ def get_employee_by_user_id(
 )
 def create_employee(
     _: CurrentUserDep,
-    employee_in: EmployeeCreateForUser,
+    employee_in: EmployeeCreate,
     employee_service: EmployeeServiceDep,
 ):
     """
