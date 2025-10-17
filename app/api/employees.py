@@ -8,21 +8,33 @@ router = APIRouter()
 
 
 @router.get(
+    "/me",
+    name="Get My Employee",
+    operation_id="getMyEmployee",
+    status_code=status.HTTP_200_OK,
+)
+def get_my_employee(user: CurrentUserDep):
+    """
+    Get the employee for the current user.
+    """
+    return user.employee
+
+
+@router.get(
     "/{user_id}",
     name="Get Employees",
     operation_id="getEmployees",
     status_code=status.HTTP_200_OK,
 )
 def get_employee_by_user_id(
-    _: CurrentUserDep,
-    user_id: uuid.UUID,
-    employee_service: EmployeeServiceDep
+    _: CurrentUserDep, user_id: uuid.UUID, employee_service: EmployeeServiceDep
 ):
     """
     Get employee for a specific user.
     """
     # TODO: auth
     return employee_service.get_employee_by_user_id(user_id=user_id)
+
 
 @router.post(
     "/",
