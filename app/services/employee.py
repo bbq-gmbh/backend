@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.core.exceptions import EmployeeExistsError, UserNotFoundError
+from app.core.exceptions import EmployeeAlreadyExistsError, UserNotFoundError
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.schemas.employee import EmployeeCreate
@@ -18,7 +18,7 @@ class EmployeeService:
             raise UserNotFoundError(user_id=employee_in.user_id)
 
         if user.employee:
-            raise EmployeeExistsError()
+            raise EmployeeAlreadyExistsError()
 
         user.employee = self.employee_repository.create_employee(employee_in)
         self.session.add(user.employee)

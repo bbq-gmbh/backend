@@ -5,6 +5,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from app.config.database import get_session
+from app.core.exceptions import (
+    InvalidTokenError,
+    TokenRevokedError,
+    UserNotAuthenticatedError,
+)
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.repositories.user import UserRepository
@@ -76,11 +81,7 @@ def get_token_data(
     """Decodes the bearer token and retrieves the token data."""
     data = auth_service.decode_token(token.credentials)
     if not data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise InvalidTokenError()
     return data
 
 
@@ -130,25 +131,20 @@ def get_current_user(
     """
     Retrieves the user from the database from an access token.
 
-    Raises HTTPException for user not found.
+    Raises:
+        UserNotAuthenticatedError: User not found (deleted account)
+        TokenRevokedError: Token has been revoked (password change/logout)
 
-    Returns the authenticated User model.
+    Returns:
+        The authenticated User model.
     """
     user = user_service.get_user_by_id(token_data.sub)
-    # Existence check
+    # Existence check (user was deleted but token still valid)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    # Token key match (handles global invalidation / rotation)
+        raise UserNotAuthenticatedError()
+    # Token key match (handles logout-all / password change invalidation)
     if user.token_key != token_data.key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalidated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise TokenRevokedError()
     return user
 
 
@@ -162,23 +158,18 @@ def get_user_from_refresh_token(
     """
     Retrieves the user from the database from a refresh token.
 
-    Raises HTTPException for user not found.
+    Raises:
+        UserNotAuthenticatedError: User not found (deleted account)
+        TokenRevokedError: Token has been revoked (password change/logout)
 
-    Returns the authenticated User model.
+    Returns:
+        The authenticated User model.
     """
     user = user_service.get_user_by_id(token_data.sub)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UserNotAuthenticatedError()
     if user.token_key != token_data.key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalidated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise TokenRevokedError()
     return user
 
 
