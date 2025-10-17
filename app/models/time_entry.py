@@ -13,7 +13,7 @@ class TimeEntryType(Enum):
 class TimeEntry(SQLModel, table=True):
     __tablename__: str = "time_entries"
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: str = Field(foreign_key="employees.id", index=True)
+    user_id: str = Field(foreign_key="employees.user_id", index=True)
     author_id: str = Field(foreign_key="users.id", index=True)
     entry_type: TimeEntryType
     date_time: datetime = Field(index=True)
