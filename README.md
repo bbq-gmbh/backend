@@ -30,6 +30,28 @@ docker run -p 3001:3001 \
 ```
 App: http://127.0.0.1:3001
 
+### Docker Compose (with PostgreSQL)
+```bash
+# Start both backend and PostgreSQL
+docker compose up
+
+# Or run in background
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# Stop and remove volumes (deletes database)
+docker compose down -v
+```
+App: http://127.0.0.1:3001
+
+The PostgreSQL database will be accessible at `localhost:5432` with credentials:
+- User: `postgres`
+- Password: `postgres`
+- Database: `fsbackend`
+
+
 ## Core Endpoints (MVP)
 Auth:
 - POST /auth/register → TokenPair (access, refresh)
