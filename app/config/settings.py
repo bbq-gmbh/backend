@@ -28,8 +28,5 @@ class Settings:
     )
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(_get_required_env("REFRESH_TOKEN_EXPIRE_DAYS"))
 
-    # CORS settings
-    CORS_ORIGINS: list[str] = _get_required_env("CORS_ORIGINS").split(",")
-
 
 settings = Settings()
