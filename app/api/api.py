@@ -6,7 +6,7 @@ from app.api import auth, users
 def register_routes(app: FastAPI) -> None:
     """
     Register all API routers with the FastAPI application.
-    
+
     Args:
         app: FastAPI application instance
     """

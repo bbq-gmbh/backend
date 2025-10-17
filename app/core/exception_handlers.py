@@ -14,11 +14,11 @@ from app.core.exceptions import (
 def register_exception_handlers(app: FastAPI) -> None:
     """
     Register all exception handlers with the FastAPI application.
-    
+
     Args:
         app: FastAPI application instance
     """
-    
+
     @app.exception_handler(UserAlreadyExistsError)
     async def user_exists_handler(_, exc: UserAlreadyExistsError):
         return JSONResponse(status_code=409, content={"detail": str(exc)})
