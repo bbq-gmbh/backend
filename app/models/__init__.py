@@ -7,5 +7,6 @@ with SQLModel.metadata before database initialization.
 
 from app.models.employee import Employee
 from app.models.user import User
+from app.models.time_entry import TimeEntry
 
-__all__ = ["User", "Employee"]
+__all__ = ["User", "Employee", "TimeEntry"]
