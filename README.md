@@ -1,5 +1,7 @@
 # fs-backend
 
+![Tests](https://github.com/bbq-gmbh/backend/actions/workflows/test.yml/badge.svg?branch=main)
+
 Minimal FastAPI + SQLModel auth + users service.
 
 ## Quick Start
@@ -13,13 +15,25 @@ uv run fastapi dev --port 3001 app/main.py
 docker compose build
 docker compose up
 
-# Run tests
+# Run tests (no .env required!)
 uv sync --all-groups
 uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=app --cov-report=term
 ```
 
 **App**: http://localhost:3001  
 **Docs**: http://localhost:3001/docs
+
+## CI/CD
+
+GitHub Actions automatically run tests on:
+- ✅ Push to `main` branch
+- ✅ Pull requests to `main`
+- ✅ Manual trigger (Actions tab → Tests → Run workflow)
+
+Tests run with **85% code coverage** and require no `.env` file.
 
 ## API Endpoints
 
