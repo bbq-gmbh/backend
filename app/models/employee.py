@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 class Employee(SQLModel, table=True):
     __tablename__: str = "employees"
-    user_id: uuid.UUID = Field(primary_key=True)
+    user_id: uuid.UUID = Field(primary_key=True, foreign_key="users.id")
     first_name: str
     last_name: str
 
