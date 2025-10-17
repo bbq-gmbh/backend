@@ -3,9 +3,30 @@
 Minimal FastAPI + SQLModel auth + users service.
 
 ## Run
+
+### Local Development
 ```bash
 uv sync
 uv run fastapi dev --port 3001 app/main.py
+```
+App: http://127.0.0.1:3001
+
+### Docker
+```bash
+# Build the image
+docker build -t fs-backend .
+
+# Run with environment file
+docker run -p 3001:3001 -v $(pwd)/.env:/app/.env fs-backend
+
+# Or run with environment variables
+docker run -p 3001:3001 \
+  -e DATABASE_URL="sqlite:///.temp/database.db" \
+  -e JWT_SECRET_KEY="secret" \
+  -e JWT_ALGORITHM="HS256" \
+  -e ACCESS_TOKEN_EXPIRE_MINUTES="30" \
+  -e REFRESH_TOKEN_EXPIRE_DAYS="7" \
+  fs-backend
 ```
 App: http://127.0.0.1:3001
 
