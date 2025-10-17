@@ -24,6 +24,6 @@ class User(SQLModel, table=True):
     )
 
     employee_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="employees.id", unique=True
+        default=None, foreign_key="employees.user_id", unique=True
     )
     employee: Optional["Employee"] = Relationship(back_populates="user")
