@@ -31,6 +31,9 @@ def session_fixture():
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+    
+    # Properly dispose of the engine and close all connections
+    engine.dispose()
 
 
 @pytest.fixture(name="client")
@@ -41,8 +44,10 @@ def client_fixture(session: Session):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
+    
+    with TestClient(app) as client:
+        yield client
+    
     app.dependency_overrides.clear()
 
 
