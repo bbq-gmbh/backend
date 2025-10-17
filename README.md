@@ -1,60 +1,49 @@
 # fs-backend
 
+![Tests](https://github.com/bbq-gmbh/backend/actions/workflows/test.yml/badge.svg?branch=main)
+
 Minimal FastAPI + SQLModel auth + users service.
 
-## Run
+## Quick Start
+
 ```bash
+# Local development
 uv sync
 uv run fastapi dev --port 3001 app/main.py
-```
-App: http://127.0.0.1:3001
 
-## Core Endpoints (MVP)
-Auth:
-- POST /auth/register → TokenPair (access, refresh)
-- POST /auth/login → TokenPair
-- POST /auth/refresh → new access token
-- POST /auth/logout-all → 204 (rotates user.token_key)
-- POST /auth/change-password → 204 (rotates token_key)
+# With Docker Compose (PostgreSQL)
+docker compose build
+docker compose up
 
-Users:
-- POST /users → create user (returns UserRead)
-- GET  /users → list users (auth required)
+# Run tests (no .env required!)
+uv sync --all-groups
+uv run pytest
 
-## JWT Payload
-```
-{
-	"sub": "<user_id>",
-	"key": "<rotating uuid>",
-	"kind": "access|refresh",
-	"iat": <epoch>,
-	"exp": <epoch>
-}
-```
-Rotation: logout-all or password change issues new `key` → all prior tokens invalid.
-
-## Validation Rules
-Username: >=4 chars, no spaces.
-Password: >=8 chars.
-
-## Error Mapping
-Status | Condition
------- | ---------
-401 | Invalid credentials / token decode / invalidated token
-404 | User not found (lookup by id)
-409 | Username already exists
-422 | ValidationError (username/password rules)
-400 | Other DomainError
-
-Response shape:
-```json
-{"detail": "Message"}
+# Run tests with coverage
+uv run pytest -v --cov=app --cov-report=term-missing
 ```
 
-## Notes
-- SQLite dev DB auto-created.
-- No migrations, tests, or rate limiting (intentional scope reduction).
-- Rotating `token_key` is the only token invalidation mechanism.
+**App**: http://localhost:3001  
+**Docs**: http://localhost:3001/docs
 
-## License
-Internal / TBD
+## CI/CD
+
+GitHub Actions automatically run tests on:
+- ✅ Push to `main` branch
+- ✅ Pull requests to `main`
+- ✅ Manual trigger (Actions tab → Tests → Run workflow)
+
+**85% code coverage** • No external dependencies • No `.env` file needed
+
+## API Endpoints
+
+**Auth**
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - Login with credentials
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/logout-all` - Invalidate all tokens
+- `POST /auth/change-password` - Change password
+
+**Users**
+- `POST /users` - Create user
+- `GET /users` - List users (requires auth)

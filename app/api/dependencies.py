@@ -5,15 +5,25 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
 from app.config.database import get_session
+from app.core.exceptions import (
+    InvalidTokenError,
+    TokenRevokedError,
+    UserNotAuthenticatedError,
+)
 from app.models.user import User
+from app.repositories.employee import EmployeeRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData, TokenKind
 from app.services.auth import AuthService
+from app.services.employee import EmployeeService
 from app.services.user import UserService
 
 bearer_scheme = HTTPBearer()
 
 DatabaseSession = Annotated[Session, Depends(get_session)]
+
+
+# User
 
 
 def get_user_repository(session: DatabaseSession) -> UserRepository:
@@ -34,6 +44,28 @@ def get_user_service(
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
+# Employee
+
+
+def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
+    """Provides an employee repository dependency."""
+    return EmployeeRepository(user_repository=user_repo)
+
+
+EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
+
+
+def get_employee_service(employee_repo: EmployeeRepositoryDep) -> EmployeeService:
+    """Provides an employee service dependency."""
+    return EmployeeService(employee_repository=employee_repo)
+
+
+EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
+
+
+# Auth
+
+
 def get_auth_service(user_service: UserServiceDep) -> AuthService:
     """Provides an auth service dependency."""
     return AuthService(user_service=user_service)
@@ -49,11 +81,7 @@ def get_token_data(
     """Decodes the bearer token and retrieves the token data."""
     data = auth_service.decode_token(token.credentials)
     if not data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise InvalidTokenError()
     return data
 
 
@@ -103,25 +131,20 @@ def get_current_user(
     """
     Retrieves the user from the database from an access token.
 
-    Raises HTTPException for user not found.
+    Raises:
+        UserNotAuthenticatedError: User not found (deleted account)
+        TokenRevokedError: Token has been revoked (password change/logout)
 
-    Returns the authenticated User model.
+    Returns:
+        The authenticated User model.
     """
     user = user_service.get_user_by_id(token_data.sub)
-    # Existence check
+    # Existence check (user was deleted but token still valid)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    # Token key match (handles global invalidation / rotation)
+        raise UserNotAuthenticatedError()
+    # Token key match (handles logout-all / password change invalidation)
     if user.token_key != token_data.key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalidated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise TokenRevokedError()
     return user
 
 
@@ -135,23 +158,18 @@ def get_user_from_refresh_token(
     """
     Retrieves the user from the database from a refresh token.
 
-    Raises HTTPException for user not found.
+    Raises:
+        UserNotAuthenticatedError: User not found (deleted account)
+        TokenRevokedError: Token has been revoked (password change/logout)
 
-    Returns the authenticated User model.
+    Returns:
+        The authenticated User model.
     """
     user = user_service.get_user_by_id(token_data.sub)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UserNotAuthenticatedError()
     if user.token_key != token_data.key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalidated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise TokenRevokedError()
     return user
 
 
