@@ -20,7 +20,7 @@ uv sync --all-groups
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=app --cov-report=term
+uv run pytest -v --cov=app --cov-report=term-missing
 ```
 
 **App**: http://localhost:3001  
@@ -33,7 +33,7 @@ GitHub Actions automatically run tests on:
 - ✅ Pull requests to `main`
 - ✅ Manual trigger (Actions tab → Tests → Run workflow)
 
-Tests run with **85% code coverage** and require no `.env` file.
+**85% code coverage** • No external dependencies • No `.env` file needed
 
 ## API Endpoints
 

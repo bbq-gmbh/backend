@@ -25,27 +25,16 @@
 2. ✅ Installs uv (`astral-sh/setup-uv@v6`) with caching enabled
 3. ✅ Sets up Python (respects `requires-python` in pyproject.toml)
 4. ✅ Installs dependencies with `uv sync --all-groups`
-5. ✅ Runs all 35 tests
-6. ✅ Generates coverage report (85% coverage)
-7. ✅ Uploads coverage to Codecov (optional, requires `CODECOV_TOKEN` secret)
+5. ✅ Runs all 35 tests with coverage report (85% coverage)
+6. ✅ Shows coverage in terminal output (no external services needed)
 
 ### Requirements
 
-- **No secrets required** for basic operation
+- **No secrets required**
+- **No external services** - Everything runs in GitHub Actions
 - Tests run completely isolated with in-memory SQLite
 - No `.env` file needed
-- No external services required
-
-### Adding Codecov (Optional)
-
-To enable coverage tracking:
-
-1. Sign up at https://codecov.io
-2. Add your repository
-3. Copy the upload token
-4. Add as GitHub secret: `Settings → Secrets → Actions → New repository secret`
-   - Name: `CODECOV_TOKEN`
-   - Value: your token
+- Coverage reports shown directly in CI logs
 
 ### Viewing Results
 
@@ -59,9 +48,8 @@ Test what CI will do:
 
 ```bash
 # Run exactly what CI runs
-uv sync
-uv run pytest -v
-uv run pytest --cov=app --cov-report=xml --cov-report=term
+uv sync --all-groups
+uv run pytest -v --cov=app --cov-report=term-missing
 ```
 
 ### Troubleshooting
