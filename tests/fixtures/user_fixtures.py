@@ -42,12 +42,9 @@ def test_credentials():
 @pytest.fixture
 def authenticated_client(client, created_user, test_credentials):
     """Provide a client with authenticated user and access token."""
-    response = client.post(
-        "/auth/login",
-        json=test_credentials
-    )
+    response = client.post("/auth/login", json=test_credentials)
     token_data = response.json()
     access_token = token_data["access_token"]
-    
+
     client.headers = {"Authorization": f"Bearer {access_token}"}
     return client

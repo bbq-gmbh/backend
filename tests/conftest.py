@@ -18,7 +18,7 @@ from app.main import app
 @pytest.fixture(name="session")
 def session_fixture():
     """Create a fresh in-memory database for each test.
-    
+
     Uses SQLite in-memory database which is completely isolated from
     the application's database and requires no .env file.
     Each test gets a fresh database with all tables created.
@@ -31,7 +31,7 @@ def session_fixture():
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
-    
+
     # Properly dispose of the engine and close all connections
     engine.dispose()
 
@@ -44,10 +44,10 @@ def client_fixture(session: Session):
         return session
 
     app.dependency_overrides[get_session] = get_session_override
-    
+
     with TestClient(app) as client:
         yield client
-    
+
     app.dependency_overrides.clear()
 
 

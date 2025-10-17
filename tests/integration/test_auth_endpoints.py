@@ -55,15 +55,13 @@ class TestRefreshToken:
         """Test refreshing access token with valid refresh token."""
         # First, login to get both tokens
         login_response = client.post(
-            "/auth/login",
-            json={"username": "testuser", "password": "Test123!@#"}
+            "/auth/login", json={"username": "testuser", "password": "Test123!@#"}
         )
         refresh_token = login_response.json()["refresh_token"]
 
         # Use refresh token to get new access token
         response = client.post(
-            "/auth/refresh",
-            headers={"Authorization": f"Bearer {refresh_token}"}
+            "/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
         )
 
         assert response.status_code == 200
