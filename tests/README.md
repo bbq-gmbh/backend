@@ -1,6 +1,13 @@
 # Testing Guide
 
-Test suite for fs-backend with in-memory SQLite database.
+Test suite for fs-backend with **fully isolated** in-memory SQLite database.
+
+## Key Features
+
+✅ **No .env file required** - Tests work without any environment configuration  
+✅ **In-memory database** - Fresh `sqlite:///:memory:` database for each test  
+✅ **Complete isolation** - Tests don't affect your development database  
+✅ **Fast execution** - No disk I/O, pure memory operations  
 
 ## Structure
 
