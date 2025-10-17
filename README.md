@@ -32,6 +32,9 @@ App: http://127.0.0.1:3001
 
 ### Docker Compose (with PostgreSQL)
 ```bash
+# Build the images
+docker compose build
+
 # Start both backend and PostgreSQL
 docker compose up
 
