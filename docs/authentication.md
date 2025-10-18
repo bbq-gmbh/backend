@@ -85,9 +85,9 @@ sequenceDiagram
     Service->>Database: fetch user
     Database-->>Service: user data
     Service->>Service: verify token_version & token_kind
-    Service->>Service: issue new access token
-    Service-->>API: AccessToken {access}
-    API-->>Client: 200 OK + new access token
+    Service->>Service: issue new token pair
+    Service-->>API: TokenPair {access, refresh}
+    API-->>Client: 200 OK + new access and refresh tokens
 ```
 
 **Process**:
@@ -95,7 +95,8 @@ sequenceDiagram
 2. Refresh token decoded and validated
 3. Token kind must be "refresh"
 4. Token version verified against user's current version
-5. New access token issued (refresh token remains valid)
+5. New token pair issued (both access and refresh tokens)
+6. Note: Old refresh token remains valid (not invalidated)
 
 ### 5. Logout (All Devices)
 
