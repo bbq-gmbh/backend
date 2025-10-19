@@ -24,7 +24,7 @@ class OvertimeRecordService:
             user (User): The user for whom the overtime record is being created.
             record_data (OvertimeRecordCreate): The overtime record data containing work times.
             
-        Returns:
+        Returns: 
             OvertimeRecord: The created overtime record.
         """
         # Calculate total work time
