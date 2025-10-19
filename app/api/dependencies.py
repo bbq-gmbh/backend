@@ -6,9 +6,11 @@ from sqlmodel import Session
 
 from app.config.database import get_session
 from app.models.user import User
+from app.repositories.overtime import OvertimeRecordRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData, TokenKind
 from app.services.auth import AuthService
+from app.services.overtime import OvertimeRecordService
 from app.services.user import UserService
 
 bearer_scheme = HTTPBearer()
@@ -161,20 +163,20 @@ UserFromRefreshTokenDep = Annotated[User, Depends(get_user_from_refresh_token)]
 def get_overtime_record_repository(
     session: DatabaseSession,
 ) -> OvertimeRecordRepository:
-    """Provides a time record repository dependency."""
-    return TimeRecordRepository(session=session)
+    """Provides an overtime record repository dependency."""
+    return OvertimeRecordRepository(session=session)
 
 
-TimeRecordRepositoryDep = Annotated[
+OvertimeRecordRepositoryDep = Annotated[
     OvertimeRecordRepository, Depends(get_overtime_record_repository)
 ]
 
 
 def get_overtime_record_service(
-    time_record_repo: TimeRecordRepositoryDep,
+    overtime_record_repo: OvertimeRecordRepositoryDep,
 ) -> OvertimeRecordService:
-    """Provides a time record service dependency."""
-    return OvertimeRecordService(user_repository=time_record_repo)
+    """Provides an overtime record service dependency."""
+    return OvertimeRecordService(overtime_record_repository=overtime_record_repo)
 
 
-overtimeRecordServiceDep = Annotated[OvertimeRecordService, Depends(get_overtime_record_service)]
+OvertimeRecordServiceDep = Annotated[OvertimeRecordService, Depends(get_overtime_record_service)]
