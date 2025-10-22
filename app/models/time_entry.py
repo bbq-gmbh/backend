@@ -1,9 +1,14 @@
 import uuid
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from datetime import datetime, timezone
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy.orm import relationship
+
+if TYPE_CHECKING:
+    from .employee import Employee
+    from .user import User
 
 
 class TimeEntryType(Enum):
@@ -26,4 +31,14 @@ class TimeEntry(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
         index=True,
+    )
+
+    employee: "Employee" = Relationship(
+        sa_relationship=relationship(foreign_keys=[user_id])
+    )
+    creator: "User" = Relationship(
+        sa_relationship=relationship(foreign_keys=[created_by])
+    )
+    updater: Optional["User"] = Relationship(
+        sa_relationship=relationship(foreign_keys=[updated_by])
     )

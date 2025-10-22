@@ -12,9 +12,9 @@ class Employee(SQLModel, table=True):
     first_name: str
     last_name: str
     supervisor_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="employees.user_id"
+        default=None, foreign_key="employees.user_id", index=True
     )
 
     user: "User" = Relationship(back_populates="employee")
-    supervisor: Optional["Employee"] = Relationship(back_populates="employees")
-    employees: list["Employee"] = Relationship(back_populates="supervisor")
+    supervisor: Optional["Employee"] = Relationship(back_populates="subordinates")
+    subordinates: list["Employee"] = Relationship(back_populates="supervisor")
