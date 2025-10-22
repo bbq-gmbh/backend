@@ -22,7 +22,9 @@ class Settings:
     DATABASE_URL: str = _get_env("DATABASE_URL", "sqlite:///.temp/database.db")
 
     # JWT settings
-    JWT_SECRET_KEY: str = _get_env("JWT_SECRET_KEY", "test-secret-key-change-in-production")
+    JWT_SECRET_KEY: str = _get_env(
+        "JWT_SECRET_KEY", "test-secret-key-change-in-production"
+    )
     JWT_ALGORITHM: str = _get_env("JWT_ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
         _get_env("ACCESS_TOKEN_EXPIRE_MINUTES", "30")

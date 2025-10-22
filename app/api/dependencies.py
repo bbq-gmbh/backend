@@ -38,7 +38,7 @@ def get_user_service(
     user_repo: UserRepositoryDep,
 ) -> UserService:
     """Provides a user service dependency."""
-    return UserService(user_repository=user_repo)
+    return UserService(user_repo=user_repo)
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
@@ -49,7 +49,7 @@ UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
     """Provides an employee repository dependency."""
-    return EmployeeRepository(user_repository=user_repo)
+    return EmployeeRepository(user_repo=user_repo)
 
 
 EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
@@ -57,13 +57,16 @@ EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repos
 
 def get_employee_service(employee_repo: EmployeeRepositoryDep) -> EmployeeService:
     """Provides an employee service dependency."""
-    return EmployeeService(employee_repository=employee_repo)
+    return EmployeeService(employee_repo=employee_repo)
 
 
 EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
 
 
 # Auth
+
+
+BearerTokenDep = Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]
 
 
 def get_auth_service(user_service: UserServiceDep) -> AuthService:
@@ -75,7 +78,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 def get_token_data(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    token: BearerTokenDep,
     auth_service: AuthServiceDep,
 ) -> TokenData:
     """Decodes the bearer token and retrieves the token data."""

@@ -7,20 +7,20 @@ from app.schemas.employee import EmployeeCreate
 
 
 class EmployeeService:
-    def __init__(self, employee_repository: EmployeeRepository):
-        self.employee_repository = employee_repository
-        self.user_repository = employee_repository.user_repository
-        self.session = self.user_repository.session
+    def __init__(self, employee_repo: EmployeeRepository):
+        self.employee_repo = employee_repo
+        self.user_repo = employee_repo.user_repo
+        self.session = self.user_repo.session
 
     def create_employee_for_user(self, employee_in: EmployeeCreate) -> Employee:
-        user = self.user_repository.get_user_by_id(employee_in.user_id)
+        user = self.user_repo.get_user_by_id(employee_in.user_id)
         if not user:
             raise UserNotFoundError(user_id=employee_in.user_id)
 
         if user.employee:
             raise EmployeeAlreadyExistsError()
 
-        user.employee = self.employee_repository.create_employee(employee_in)
+        user.employee = self.employee_repo.create_employee(employee_in)
         self.session.add(user.employee)
         self.session.add(user)
 
@@ -29,7 +29,7 @@ class EmployeeService:
         return user.employee
 
     def get_employee_by_user_id(self, user_id: str) -> Optional[Employee]:
-        user = self.user_repository.get_user_by_id(user_id)
+        user = self.user_repo.get_user_by_id(user_id)
         if not user:
             raise UserNotFoundError(user_id=user_id)
         return user.employee

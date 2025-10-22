@@ -4,9 +4,9 @@ from app.schemas.employee import EmployeeCreate
 
 
 class EmployeeRepository:
-    def __init__(self, user_repository: UserRepository):
-        self.user_repository = user_repository
-        self.session = user_repository.session
+    def __init__(self, user_repo: UserRepository):
+        self.user_repo = user_repo
+        self.session = user_repo.session
 
     def create_employee(self, employee_in: EmployeeCreate) -> Employee:
         employee = Employee(

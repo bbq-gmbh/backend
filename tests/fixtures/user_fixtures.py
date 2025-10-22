@@ -18,7 +18,7 @@ def user_repository(session: Session):
 @pytest.fixture
 def user_service(user_repository: UserRepository):
     """Provide a user service for tests."""
-    return UserService(user_repository=user_repository)
+    return UserService(user_repo=user_repository)
 
 
 @pytest.fixture

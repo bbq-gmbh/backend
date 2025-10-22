@@ -67,7 +67,9 @@ def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep) -> No
     operation_id="refreshTokens",
     response_model=TokenPair,
 )
-def refresh_token(user: UserFromRefreshTokenDep, auth_service: AuthServiceDep) -> TokenPair:
+def refresh_token(
+    user: UserFromRefreshTokenDep, auth_service: AuthServiceDep
+) -> TokenPair:
     """Refreshes both access and refresh tokens using a valid refresh token."""
     access_token, refresh_token = auth_service.issue_token_pair(user)
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
