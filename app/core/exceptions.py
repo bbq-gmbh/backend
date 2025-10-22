@@ -51,6 +51,18 @@ class UserNotAuthenticatedError(AuthenticationError):
         super().__init__("User not found")
 
 
+# 403 Forbidden - Authorization errors
+class AuthorizationError(DomainError):
+    """Base class for authorization-related errors."""
+
+
+class UserNotAuthorizedError(AuthorizationError):
+    """Raised when a user doesn't have permission to access a resource."""
+
+    def __init__(self, message: str = "Not authorized to access this resource"):
+        super().__init__(message)
+
+
 # 404 Not Found - Resource not found errors
 class ResourceNotFoundError(DomainError):
     """Base class for resource not found errors."""
