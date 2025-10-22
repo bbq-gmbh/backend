@@ -57,9 +57,9 @@ class AuthorizationError(DomainError):
 
 
 class UserNotAuthorizedError(AuthorizationError):
-    """Raised when a user doesn't have permission to access a resource."""
+    """Raised when a user doesn't have permission to perform an action."""
 
-    def __init__(self, message: str = "Not authorized to access this resource"):
+    def __init__(self, message: str = "Not authorized to perform this action"):
         super().__init__(message)
 
 
