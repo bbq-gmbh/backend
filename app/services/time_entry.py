@@ -38,7 +38,7 @@ class TimeEntryService:
         if not actor.is_superuser and actor.employee is None:
             raise UserNotAuthorizedError()
 
-        time_entry = self.time_entry_repo.get_time_entry(time_entry_update.id)
+        time_entry = self.time_entry_repo.get_time_entry_by_id(time_entry_update.id)
 
         if time_entry is None:
             raise ResourceNotFoundError()
@@ -59,7 +59,7 @@ class TimeEntryService:
         if not actor.is_superuser and actor.employee is None:
             raise UserNotAuthorizedError()
 
-        time_entry = self.time_entry_repo.get_time_entry(time_entry_delete.id)
+        time_entry = self.time_entry_repo.get_time_entry_by_id(time_entry_delete.id)
 
         if time_entry is None:
             raise ResourceNotFoundError()
