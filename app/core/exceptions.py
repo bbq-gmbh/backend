@@ -1,3 +1,6 @@
+import uuid
+
+
 # Base Exception
 class DomainError(Exception):
     """Base class for all domain-level errors."""
@@ -71,7 +74,7 @@ class ResourceNotFoundError(DomainError):
 class UserNotFoundError(ResourceNotFoundError):
     """Raised when a user cannot be found by id or username."""
 
-    def __init__(self, user_id: str | None = None, username: str | None = None):
+    def __init__(self, user_id: uuid.UUID | None = None, username: str | None = None):
         ident = user_id or username or "unknown"
         super().__init__(f"User '{ident}' not found")
         self.user_id = user_id

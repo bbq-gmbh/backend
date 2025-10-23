@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from app.config.settings import Settings
@@ -29,7 +30,7 @@ class EmployeeService:
         self.session.refresh(user.employee)
         return user.employee
 
-    def get_employee_by_user_id(self, user_id: str) -> Optional[Employee]:
+    def get_employee_by_user_id(self, user_id: uuid.UUID) -> Optional[Employee]:
         user = self.user_repo.get_user_by_id(user_id)  # type: ignore TODO
         if not user:
             raise UserNotFoundError(user_id=user_id)
