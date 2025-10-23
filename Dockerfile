@@ -9,6 +9,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
+# Install system dependencies
+RUN apt-get update && apt-get -y install libpq-dev gcc
+
 # Install dependencies
 RUN uv sync --frozen --no-dev --compile-bytecode --no-python-downloads
 
