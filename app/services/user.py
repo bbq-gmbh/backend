@@ -17,7 +17,8 @@ class UserService:
         self.user_repo = user_repo
         self.session = user_repo.session
 
-    def _validate_username(self, username: str):
+    @staticmethod
+    def _validate_username(username: str):
         """Validates username rules.
 
         Keep this in sync with any API documentation or client-side validation.
@@ -29,7 +30,8 @@ class UserService:
         if " " in username:
             raise ValidationError("Username cannot contain spaces")
 
-    def _validate_password(self, password: str):
+    @staticmethod
+    def _validate_password(password: str):
         """Validates password creation/update rules (length, non-empty).
 
         NOTE: Keep in sync with any future policy (complexity, entropy, blacklist, etc.).
