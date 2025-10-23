@@ -38,14 +38,14 @@ class EmployeeService:
     def get_hirarchy_difference(
         self, employee: Employee, other: Employee
     ) -> Optional[int]:
-        """
-        Calculate the hierarchy level difference between two employees.
+        """Calculate the hierarchy level difference between two employees.
+
+        Args:
+            employee: The employee to check.
+            other: The employee to compare against.
 
         Returns:
-            - Positive integer if 'employee' is a supervisor of 'other' (employee is higher)
-            - 0 if 'employee' is the same as 'other'
-            - Negative integer if 'employee' is a subordinate of 'other' (employee is lower)
-            - None if they are not related in the hierarchy
+            Positive int if employee is higher, 0 if same, negative if lower, None if not related.
         """
         # Check if they are the same employee
         if employee.user_id == other.user_id:
@@ -77,26 +77,33 @@ class EmployeeService:
         return None
 
     def is_related_to(self, employee: Employee, other: Employee) -> bool:
-        """
-        Check if two employees are related in the hierarchy.
+        """Check if two employees are related in the hierarchy.
+
+        Args:
+            employee: The employee to check.
+            other: The employee to compare against.
 
         Returns:
-            - True if they are the same employee or if one is a supervisor/subordinate of the other
-            - False if they are not related in the hierarchy
+            True if they are the same or one is a supervisor/subordinate of the other, False otherwise.
         """
         return self.get_hirarchy_difference(employee, other) is not None
 
-    def is_higher_than(self, employee: Employee, other: Employee) -> bool:
-        """
-        Check if 'employee' is higher in the hierarchy than 'other'.
+    def is_higher(
+        self, employee: Employee, other: Employee, same: bool = False
+    ) -> bool:
+        """Check if 'employee' is higher in the hierarchy than 'other'.
+
+        Args:
+            employee: The employee to check.
+            other: The employee to compare against.
+            same: If True, returns True when employees are the same. Default is False.
 
         Returns:
-            - True if 'employee' is a supervisor of 'other' (directly or indirectly)
-            - False if they are the same, if 'other' is higher, or if they are not related
+            True if employee is a supervisor of other (or same when same=True), False otherwise.
         """
-        # Same employee is not higher
+        # Check if they are the same employee
         if employee.user_id == other.user_id:
-            return False
+            return same
 
         # Check if employee is a supervisor of other (going up from other)
         current = other
@@ -111,17 +118,20 @@ class EmployeeService:
 
         return False
 
-    def is_lower_than(self, employee: Employee, other: Employee) -> bool:
-        """
-        Check if 'employee' is lower in the hierarchy than 'other'.
+    def is_lower(self, employee: Employee, other: Employee, same: bool = False) -> bool:
+        """Check if 'employee' is lower in the hierarchy than 'other'.
+
+        Args:
+            employee: The employee to check.
+            other: The employee to compare against.
+            same: If True, returns True when employees are the same. Default is False.
 
         Returns:
-            - True if 'employee' is a subordinate of 'other' (directly or indirectly)
-            - False if they are the same, if 'employee' is higher, or if they are not related
+            True if employee is a subordinate of other (or same when same=True), False otherwise.
         """
-        # Same employee is not lower
+        # Check if they are the same employee
         if employee.user_id == other.user_id:
-            return False
+            return same
 
         # Check if employee is a subordinate of other (going up from employee)
         current = employee
@@ -138,4 +148,3 @@ class EmployeeService:
 
     def is_supervisor_of(self, employee: Employee, other: Employee) -> bool:
         return False
-        pass
