@@ -1,8 +1,5 @@
 """Integration tests for authentication endpoints."""
 
-import pytest
-from fastapi.testclient import TestClient
-
 
 class TestLogin:
     """Test login endpoint."""
