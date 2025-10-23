@@ -56,9 +56,6 @@ class UserService:
 
         return user
 
-    def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
-        return self.user_repo.get_user_by_id(user_id)
-
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.user_repo.get_user_by_username(username)
         if not user:
