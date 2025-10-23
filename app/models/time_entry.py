@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Optional
 from datetime import datetime, timezone
 
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy.orm import relationship
 
 if TYPE_CHECKING:
     from .employee import Employee
@@ -36,11 +35,11 @@ class TimeEntry(SQLModel, table=True):
     )
 
     employee: "Employee" = Relationship(
-        sa_relationship=relationship(foreign_keys=[user_id])  # type: ignore
+        sa_relationship_kwargs={"foreign_keys": "TimeEntry.user_id"}
     )
     creator: "User" = Relationship(
-        sa_relationship=relationship(foreign_keys=[created_by])  # type: ignore
+        sa_relationship_kwargs={"foreign_keys": "TimeEntry.created_by"}
     )
     updater: Optional["User"] = Relationship(
-        sa_relationship=relationship(foreign_keys=[updated_by])  # type: ignore
+        sa_relationship_kwargs={"foreign_keys": "TimeEntry.updated_by"}
     )
