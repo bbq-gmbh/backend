@@ -70,7 +70,7 @@ class TestRefreshToken:
         assert "refresh_token" in data
         assert "token_type" in data
         assert data["token_type"] == "bearer"
-        
+
         # Verify we got both tokens
         # Access token should be different from the old refresh token (different kind: "access" vs "refresh")
         assert data["access_token"] != old_refresh_token
