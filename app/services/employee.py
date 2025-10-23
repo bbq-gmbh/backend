@@ -145,6 +145,3 @@ class EmployeeService:
                 break
 
         return False
-
-    def is_supervisor_of(self, employee: Employee, other: Employee) -> bool:
-        return False
