@@ -1,6 +1,5 @@
 """Unit tests for AuthService."""
 
-import pytest
 from app.schemas.auth import TokenKind
 
 
@@ -8,7 +7,7 @@ class TestAuthentication:
     """Test authentication functionality."""
 
     def test_authenticate_user_success(
-        self, auth_service, user_service, created_user, test_credentials
+        self, user_service, created_user, test_credentials
     ):
         """Test successful user authentication."""
         user = user_service.authenticate_user(
