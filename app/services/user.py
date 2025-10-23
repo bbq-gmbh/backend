@@ -1,5 +1,4 @@
 import uuid
-import logging
 
 from typing import Optional
 
@@ -19,8 +18,7 @@ from app.schemas.user import UserCreate
 class UserService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
-        self._session: Session = user_repo.session
-        self._log = logging.getLogger("app.user_service")
+        self.session: Session = user_repo.session
 
     def _validate_username(self, username: str):
         """Validates username rules.
@@ -51,14 +49,11 @@ class UserService:
         self._validate_password(user_in.password)
 
         if self.user_repo.get_user_by_username(username):
-            self._log.info("user.create.duplicate username=%s", username)
             raise UserAlreadyExistsError(username)
 
         user = self.user_repo.create_user(user_in)
-        self._session.commit()
-        self._session.refresh(user)
-
-        self._log.info("user.create.success id=%s username=%s", user.id, username)
+        self.session.commit()
+        self.session.refresh(user)
 
         return user
 
@@ -77,10 +72,8 @@ class UserService:
 
     def rotate_token_key(self, user: User):
         self.user_repo.rotate_token_key(user)
-        self._session.commit()
-        self._session.refresh(user)
-
-        self._log.info("user.token.rotate id=%s new_key=%s", user.id, user.token_key)
+        self.session.commit()
+        self.session.refresh(user)
 
     def get_all_users(self) -> list[User]:
         """Retrieves all users."""
@@ -96,7 +89,5 @@ class UserService:
 
         self.user_repo.update_password(user, new_password)
         self.user_repo.rotate_token_key(user)
-        self._session.commit()
-        self._session.refresh(user)
-
-        self._log.info("user.password.changed id=%s", user.id)
+        self.session.commit()
+        self.session.refresh(user)
