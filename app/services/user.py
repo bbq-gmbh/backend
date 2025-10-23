@@ -4,7 +4,6 @@ from typing import Optional
 
 from app.core.security import verify_password
 from app.models.user import User
-from sqlmodel import Session
 
 from app.repositories.user import UserRepository
 from app.core.exceptions import (
@@ -18,7 +17,7 @@ from app.schemas.user import UserCreate
 class UserService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
-        self.session: Session = user_repo.session
+        self.session = user_repo.session
 
     def _validate_username(self, username: str):
         """Validates username rules.
