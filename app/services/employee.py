@@ -35,9 +35,8 @@ class EmployeeService:
             raise UserNotFoundError(user_id=user_id)
         return user.employee
 
-    def get_hirarchy_difference(
-        self, employee: Employee, other: Employee
-    ) -> Optional[int]:
+    @staticmethod
+    def get_hirarchy_difference(employee: Employee, other: Employee) -> Optional[int]:
         """Calculate the hierarchy level difference between two employees.
 
         Args:
@@ -76,7 +75,8 @@ class EmployeeService:
         # Not related
         return None
 
-    def is_related_to(self, employee: Employee, other: Employee) -> bool:
+    @staticmethod
+    def is_related_to(employee: Employee, other: Employee) -> bool:
         """Check if two employees are related in the hierarchy.
 
         Args:
@@ -86,11 +86,10 @@ class EmployeeService:
         Returns:
             True if they are the same or one is a supervisor/subordinate of the other, False otherwise.
         """
-        return self.get_hirarchy_difference(employee, other) is not None
+        return EmployeeService.get_hirarchy_difference(employee, other) is not None
 
-    def is_higher(
-        self, employee: Employee, other: Employee, same: bool = False
-    ) -> bool:
+    @staticmethod
+    def is_higher(employee: Employee, other: Employee, same: bool = False) -> bool:
         """Check if 'employee' is higher in the hierarchy than 'other'.
 
         Args:
@@ -118,7 +117,8 @@ class EmployeeService:
 
         return False
 
-    def is_lower(self, employee: Employee, other: Employee, same: bool = False) -> bool:
+    @staticmethod
+    def is_lower(employee: Employee, other: Employee, same: bool = False) -> bool:
         """Check if 'employee' is lower in the hierarchy than 'other'.
 
         Args:
