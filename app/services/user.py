@@ -1,5 +1,3 @@
-import uuid
-
 from typing import Optional
 
 from app.core.security import verify_password
