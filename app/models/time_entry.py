@@ -34,11 +34,11 @@ class TimeEntry(SQLModel, table=True):
     )
 
     employee: "Employee" = Relationship(
-        sa_relationship=relationship(foreign_keys=[user_id])
+        sa_relationship=relationship(foreign_keys=[user_id])  # type: ignore
     )
     creator: "User" = Relationship(
-        sa_relationship=relationship(foreign_keys=[created_by])
+        sa_relationship=relationship(foreign_keys=[created_by])  # type: ignore
     )
     updater: Optional["User"] = Relationship(
-        sa_relationship=relationship(foreign_keys=[updated_by])
+        sa_relationship=relationship(foreign_keys=[updated_by])  # type: ignore
     )
