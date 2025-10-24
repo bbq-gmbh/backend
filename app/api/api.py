@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import auth, employees, users, setup
+from app.api import auth, employees, me, users, setup
 
 
 def register_routes(app: FastAPI) -> None:
@@ -10,6 +10,7 @@ def register_routes(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
+    app.include_router(me.router, prefix="/me", tags=["me"])
     app.include_router(users.router, prefix="/users", tags=["users"])
     app.include_router(auth.router, prefix="/auth", tags=["auth"])
     app.include_router(employees.router, prefix="/employees", tags=["employees"])

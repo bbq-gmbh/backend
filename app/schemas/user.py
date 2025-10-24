@@ -13,9 +13,9 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    username: str | None = None
-    is_superuser: bool | None = None
-    created_at: datetime | None = None
+    username: str
+    is_superuser: bool
+    created_at: datetime
 
 
 class PasswordChangeRequest(BaseModel):
