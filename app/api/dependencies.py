@@ -38,7 +38,7 @@ def get_user_service(
     user_repo: UserRepositoryDep,
 ) -> UserService:
     """Provides a user service dependency."""
-    return UserService(user_repository=user_repo)
+    return UserService(user_repo=user_repo)
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
@@ -49,7 +49,7 @@ UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
     """Provides an employee repository dependency."""
-    return EmployeeRepository(user_repository=user_repo)
+    return EmployeeRepository(user_repo=user_repo)
 
 
 EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
@@ -57,7 +57,7 @@ EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repos
 
 def get_employee_service(employee_repo: EmployeeRepositoryDep) -> EmployeeService:
     """Provides an employee service dependency."""
-    return EmployeeService(employee_repository=employee_repo)
+    return EmployeeService(employee_repo=employee_repo)
 
 
 EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
@@ -66,16 +66,19 @@ EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
 # Auth
 
 
-def get_auth_service(user_service: UserServiceDep) -> AuthService:
+BearerTokenDep = Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]
+
+
+def get_auth_service(user_repo: UserRepositoryDep) -> AuthService:
     """Provides an auth service dependency."""
-    return AuthService(user_service=user_service)
+    return AuthService(user_repo=user_repo)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 def get_token_data(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+    token: BearerTokenDep,
     auth_service: AuthServiceDep,
 ) -> TokenData:
     """Decodes the bearer token and retrieves the token data."""
@@ -126,7 +129,7 @@ RefreshTokenDataDep = Annotated[TokenData, Depends(get_refresh_token_data)]
 
 def get_current_user(
     token_data: AccessTokenDataDep,
-    user_service: UserServiceDep,
+    user_repo: UserRepositoryDep,
 ) -> User:
     """
     Retrieves the user from the database from an access token.
@@ -138,7 +141,7 @@ def get_current_user(
     Returns:
         The authenticated User model.
     """
-    user = user_service.get_user_by_id(token_data.sub)
+    user = user_repo.get_user_by_id(token_data.sub)
     # Existence check (user was deleted but token still valid)
     if not user:
         raise UserNotAuthenticatedError()
@@ -153,7 +156,7 @@ CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
 def get_user_from_refresh_token(
     token_data: RefreshTokenDataDep,
-    user_service: UserServiceDep,
+    user_repo: UserRepositoryDep,
 ) -> User:
     """
     Retrieves the user from the database from a refresh token.
@@ -165,7 +168,7 @@ def get_user_from_refresh_token(
     Returns:
         The authenticated User model.
     """
-    user = user_service.get_user_by_id(token_data.sub)
+    user = user_repo.get_user_by_id(token_data.sub)
     if not user:
         raise UserNotAuthenticatedError()
     if user.token_key != token_data.key:

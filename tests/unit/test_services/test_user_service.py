@@ -5,7 +5,6 @@ import pytest
 
 from app.core.exceptions import (
     UserAlreadyExistsError,
-    UserNotFoundError,
     ValidationError,
 )
 from app.schemas.user import UserCreate
@@ -64,19 +63,19 @@ class TestUserCreation:
 
 
 class TestUserRetrieval:
-    """Test user retrieval functionality."""
+    """Test user retrieval operations."""
 
-    def test_get_user_by_id_success(self, user_service, created_user):
+    def test_get_user_by_id_success(self, user_repository, created_user):
         """Test successful user retrieval by ID."""
-        user = user_service.get_user_by_id(created_user.id)
+        user = user_repository.get_user_by_id(created_user.id)
 
         assert user is not None
         assert user.id == created_user.id
         assert user.username == created_user.username
 
-    def test_get_user_by_id_not_found(self, user_service):
+    def test_get_user_by_id_not_found(self, user_repository):
         """Test getting user with non-existent ID."""
-        user = user_service.get_user_by_id(uuid.uuid4())
+        user = user_repository.get_user_by_id(uuid.uuid4())
 
         assert user is None
 

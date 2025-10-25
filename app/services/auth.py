@@ -6,13 +6,13 @@ from pydantic import ValidationError
 
 from app.config.settings import settings
 from app.models.user import User
+from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData
-from app.services.user import UserService
 
 
 class AuthService:
-    def __init__(self, user_service: UserService):
-        self.user_service = user_service
+    def __init__(self, user_repo: UserRepository):
+        self.user_repo = user_repo
 
     def issue_token_pair(self, user: User) -> tuple[str, str]:
         """Issues a pair of access and refresh tokens."""
@@ -60,7 +60,7 @@ class AuthService:
             return None
 
     def get_user_from_token(self, token_data: TokenData) -> Optional[User]:
-        user = self.user_service.get_user_by_id(token_data.sub)
+        user = self.user_repo.get_user_by_id(token_data.sub)
         if user is None or user.token_key != token_data.key:
             return None
         return user

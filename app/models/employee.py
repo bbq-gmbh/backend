@@ -1,5 +1,6 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -11,5 +12,13 @@ class Employee(SQLModel, table=True):
     user_id: uuid.UUID = Field(primary_key=True, foreign_key="users.id")
     first_name: str
     last_name: str
+    supervisor_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="employees.user_id", index=True
+    )
 
     user: "User" = Relationship(back_populates="employee")
+    supervisor: Optional["Employee"] = Relationship(
+        back_populates="subordinates",
+        sa_relationship_kwargs={"remote_side": "Employee.user_id"},
+    )
+    subordinates: list["Employee"] = Relationship(back_populates="supervisor")

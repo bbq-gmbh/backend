@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.exceptions import (
     AuthenticationError,
+    AuthorizationError,
     DomainError,
     ResourceConflictError,
     ResourceNotFoundError,
@@ -17,6 +18,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     Handles exceptions in order from most specific to most general:
     - 401: Authentication errors
+    - 403: Authorization errors
     - 404: Resource not found errors
     - 409: Resource conflict errors
     - 422: Unprocessable entity / validation errors
@@ -30,6 +32,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AuthenticationError)
     async def authentication_error_handler(_, exc: AuthenticationError):
         return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+    # 403 Forbidden
+    @app.exception_handler(AuthorizationError)
+    async def authorization_error_handler(_, exc: AuthorizationError):
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
 
     # 404 Not Found
     @app.exception_handler(ResourceNotFoundError)

@@ -1,3 +1,6 @@
+import uuid
+
+
 # Base Exception
 class DomainError(Exception):
     """Base class for all domain-level errors."""
@@ -51,6 +54,18 @@ class UserNotAuthenticatedError(AuthenticationError):
         super().__init__("User not found")
 
 
+# 403 Forbidden - Authorization errors
+class AuthorizationError(DomainError):
+    """Base class for authorization-related errors."""
+
+
+class UserNotAuthorizedError(AuthorizationError):
+    """Raised when a user doesn't have permission to perform an action."""
+
+    def __init__(self, message: str = "Not authorized to perform this action"):
+        super().__init__(message)
+
+
 # 404 Not Found - Resource not found errors
 class ResourceNotFoundError(DomainError):
     """Base class for resource not found errors."""
@@ -59,7 +74,7 @@ class ResourceNotFoundError(DomainError):
 class UserNotFoundError(ResourceNotFoundError):
     """Raised when a user cannot be found by id or username."""
 
-    def __init__(self, user_id: str | None = None, username: str | None = None):
+    def __init__(self, user_id: uuid.UUID | None = None, username: str | None = None):
         ident = user_id or username or "unknown"
         super().__init__(f"User '{ident}' not found")
         self.user_id = user_id

@@ -1,8 +1,5 @@
 """Integration tests for authentication endpoints."""
 
-import pytest
-from fastapi.testclient import TestClient
-
 
 class TestLogin:
     """Test login endpoint."""
@@ -52,23 +49,33 @@ class TestRefreshToken:
     """Test refresh token endpoint."""
 
     def test_refresh_token_success(self, client, created_user):
-        """Test refreshing access token with valid refresh token."""
+        """Test refreshing tokens with valid refresh token."""
         # First, login to get both tokens
         login_response = client.post(
             "/auth/login", json={"username": "testuser", "password": "Test123!@#"}
         )
-        refresh_token = login_response.json()["refresh_token"]
+        old_refresh_token = login_response.json()["refresh_token"]
 
-        # Use refresh token to get new access token
+        # Use refresh token to get new token pair
         response = client.post(
-            "/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
+            "/auth/refresh", headers={"Authorization": f"Bearer {old_refresh_token}"}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert "token" in data
+        assert "access_token" in data
+        assert "refresh_token" in data
         assert "token_type" in data
         assert data["token_type"] == "bearer"
+
+        # Verify we got both tokens
+        # Access token should be different from the old refresh token (different kind: "access" vs "refresh")
+        assert data["access_token"] != old_refresh_token
+        # Refresh token should be different from access token (different kind)
+        assert data["refresh_token"] != data["access_token"]
+        # The tokens should be valid JWT strings
+        assert len(data["access_token"]) > 0
+        assert len(data["refresh_token"]) > 0
 
     def test_refresh_token_without_auth(self, client):
         """Test refresh without authorization header."""

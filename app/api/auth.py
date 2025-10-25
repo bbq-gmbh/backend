@@ -6,7 +6,7 @@ from app.api.dependencies import (
     UserFromRefreshTokenDep,
     UserServiceDep,
 )
-from app.schemas.auth import LoginRequest, Token, TokenPair
+from app.schemas.auth import LoginRequest, TokenPair
 from app.core.exceptions import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.schemas.user import PasswordChangeRequest
@@ -63,14 +63,16 @@ def logout_all(current_user: CurrentUserDep, user_service: UserServiceDep) -> No
 
 @router.post(
     "/refresh",
-    name="Refresh Access Token",
-    operation_id="refreshAccessToken",
-    response_model=Token,
+    name="Refresh Tokens",
+    operation_id="refreshTokens",
+    response_model=TokenPair,
 )
-def refresh_token(user: UserFromRefreshTokenDep, auth_service: AuthServiceDep) -> Token:
-    """Refreshes an access token using a valid refresh token."""
-    new_access_token = auth_service.issue_access_token(user)
-    return Token(token=new_access_token)
+def refresh_token(
+    user: UserFromRefreshTokenDep, auth_service: AuthServiceDep
+) -> TokenPair:
+    """Refreshes both access and refresh tokens using a valid refresh token."""
+    access_token, refresh_token = auth_service.issue_token_pair(user)
+    return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post(

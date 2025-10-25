@@ -7,8 +7,6 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .employee import Employee
 
-from .employee import Employee
-
 
 class User(SQLModel, table=True):
     __tablename__: str = "users"

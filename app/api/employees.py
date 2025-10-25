@@ -9,8 +9,8 @@ router = APIRouter()
 
 @router.get(
     "/me",
-    name="Get My Employee",
-    operation_id="getMyEmployee",
+    name="Get Current Employee",
+    operation_id="getCurrentEmployee",
     status_code=status.HTTP_200_OK,
 )
 def get_my_employee(user: CurrentUserDep):

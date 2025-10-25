@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.models.user import User
 from app.services.user import UserService
+from app.services.auth import AuthService
 from app.repositories.user import UserRepository
 from app.schemas.user import UserCreate
 
@@ -18,7 +19,13 @@ def user_repository(session: Session):
 @pytest.fixture
 def user_service(user_repository: UserRepository):
     """Provide a user service for tests."""
-    return UserService(user_repository=user_repository)
+    return UserService(user_repo=user_repository)
+
+
+@pytest.fixture
+def auth_service(user_repository: UserRepository):
+    """Provide an auth service for tests."""
+    return AuthService(user_repo=user_repository)
 
 
 @pytest.fixture
