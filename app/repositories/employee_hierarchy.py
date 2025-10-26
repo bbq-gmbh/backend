@@ -79,12 +79,7 @@ class EmployeeHierarchyRepository:
         self, target: Employee, *, same: bool = False
     ) -> list[uuid.UUID]:
         exec = (
-            select(User.id)
-            .join(Employee)
-            .join(
-                EmployeeHierarchy,
-                Employee.user_id == EmployeeHierarchy.descendant_id,  # type: ignore
-            )
+            select(EmployeeHierarchy.descendant_id)
             .where(EmployeeHierarchy.ancestor_id == target.user_id)
             .where(EmployeeHierarchy.depth >= int(not same))
         )
@@ -96,12 +91,7 @@ class EmployeeHierarchyRepository:
         self, target: Employee, *, same: bool = False
     ) -> list[uuid.UUID]:
         exec = (
-            select(User.id)
-            .join(Employee)
-            .join(
-                EmployeeHierarchy,
-                Employee.user_id == EmployeeHierarchy.ancestor_id,  # type: ignore
-            )
+            select(EmployeeHierarchy.ancestor_id)
             .where(EmployeeHierarchy.descendant_id == target.user_id)
             .where(EmployeeHierarchy.depth >= int(not same))
         )
@@ -111,7 +101,7 @@ class EmployeeHierarchyRepository:
 
     def remove_supervisor(self, target: Employee):
         if not target.supervisor:
-            return
+            raise ValueError("target must have an assigned supervisor")
 
         ids_upper = self.get_higher_user_ids(target)
         ids_lower = self.get_lower_user_ids(target, same=True)
@@ -123,3 +113,36 @@ class EmployeeHierarchyRepository:
         self.session.exec(exec_del)
 
         target.supervisor = None
+
+    def assign_supervisor(self, target: Employee, supervisor: Employee):
+        if target.supervisor:
+            raise ValueError("target must not have an assigned supervisor")
+
+        exec_super = (
+            select(EmployeeHierarchy.ancestor_id)
+            .where(EmployeeHierarchy.descendant_id == supervisor.user_id)
+            .order_by(EmployeeHierarchy.depth.asc())  # type: ignore
+        )
+        result_super = self.session.scalars(exec_super)
+        all_super = list(result_super.all())
+
+        exec_lower = (
+            select(EmployeeHierarchy.descendant_id)
+            .where(EmployeeHierarchy.ancestor_id == target.user_id)
+            .order_by(EmployeeHierarchy.depth.asc())  # type: ignore
+        )
+        result_lower = self.session.scalars(exec_lower)
+        all_lower = list(result_lower.all())
+
+        all = []
+        for i, super in enumerate(all_super):
+            for j, lower in enumerate(all_lower):
+                all.append(
+                    EmployeeHierarchy(
+                        ancestor_id=super, descendant_id=lower, depth=i + j + 1
+                    )
+                )
+
+        self.session.add_all(all)
+
+        target.supervisor = supervisor
