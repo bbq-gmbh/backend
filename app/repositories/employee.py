@@ -16,3 +16,6 @@ class EmployeeRepository:
         )
         self.session.add(employee)
         return employee
+
+    def delete_employee(self, target: Employee):
+        self.session.delete(target)

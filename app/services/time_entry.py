@@ -7,7 +7,7 @@ from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryUp
 
 
 class TimeEntryService:
-    def __init__(self, time_entry_repo: TimeEntryRepository):
+    def __init__(self, *, time_entry_repo: TimeEntryRepository):
         self.time_entry_repo = time_entry_repo
         self.employee_repo = time_entry_repo.employee_repo
         self.user_repo = self.employee_repo.user_repo

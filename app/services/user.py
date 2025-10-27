@@ -6,6 +6,7 @@ from app.models.user import User
 from app.repositories.user import UserRepository
 from app.core.exceptions import (
     UserAlreadyExistsError,
+    UserNotAuthorizedError,
     ValidationError,
     InvalidCredentialsError,
 )
@@ -13,7 +14,7 @@ from app.schemas.user import UserCreate
 
 
 class UserService:
-    def __init__(self, user_repo: UserRepository):
+    def __init__(self, *, user_repo: UserRepository):
         self.user_repo = user_repo
         self.session = user_repo.session
 
@@ -55,6 +56,21 @@ class UserService:
         self.session.refresh(user)
 
         return user
+
+    def delete_user(self, actor: User, user: User):
+        # TODO
+
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+        
+        if user.employee:
+            
+            pass
+
+        self.user_repo.delete_user(user)
+
+        self.session.commit()
+        self.session.refresh(user)
 
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.user_repo.get_user_by_username(username)

@@ -19,6 +19,9 @@ class UserRepository:
         self.session.add(user)
         return user
 
+    def delete_user(self, target: User):
+        self.session.delete(target)
+
     def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
         return self.session.get(User, user_id)
 
