@@ -74,7 +74,7 @@ class ResourceNotFoundError(DomainError):
 class UserNotFoundError(ResourceNotFoundError):
     """Raised when a user cannot be found by id or username."""
 
-    def __init__(self, user_id: uuid.UUID | None = None, username: str | None = None):
+    def __init__(self, *, user_id: uuid.UUID | None = None, username: str | None = None):
         ident = user_id or username or "unknown"
         super().__init__(f"User '{ident}' not found")
         self.user_id = user_id
@@ -84,9 +84,11 @@ class UserNotFoundError(ResourceNotFoundError):
 class EmployeeNotFoundError(ResourceNotFoundError):
     """Raised when an employee cannot be found."""
 
-    def __init__(self, employee_id: str):
-        super().__init__(f"Employee '{employee_id}' not found")
-        self.employee_id = employee_id
+    def __init__(self, *, user_id: uuid.UUID | None = None, username: str | None = None):
+        ident = user_id or username or "unknown"
+        super().__init__(f"Employee '{ident}' not found")
+        self.user_id = user_id
+        self.username = username
 
 
 # 409 Conflict - Resource already exists errors
