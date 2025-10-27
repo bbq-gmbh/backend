@@ -1,3 +1,6 @@
+import uuid
+from typing import Optional
+
 from app.models.employee import Employee
 from app.repositories.user import UserRepository
 from app.schemas.employee import EmployeeCreate
@@ -19,3 +22,6 @@ class EmployeeRepository:
 
     def delete_employee(self, target: Employee):
         self.session.delete(target)
+    
+    def get_employee_by_user_id(self, id: uuid.UUID) -> Optional[Employee]:
+        return self.session.get(Employee, id)
