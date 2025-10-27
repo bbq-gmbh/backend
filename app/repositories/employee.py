@@ -22,6 +22,6 @@ class EmployeeRepository:
 
     def delete_employee(self, target: Employee):
         self.session.delete(target)
-    
+
     def get_employee_by_user_id(self, id: uuid.UUID) -> Optional[Employee]:
         return self.session.get(Employee, id)
