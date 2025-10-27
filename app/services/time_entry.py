@@ -1,5 +1,4 @@
 from app.core.exceptions import ResourceNotFoundError, UserNotAuthorizedError
-from app.models.employee import Employee
 from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.repositories.time_entry import TimeEntryRepository
