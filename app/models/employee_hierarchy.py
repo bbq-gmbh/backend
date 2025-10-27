@@ -18,7 +18,7 @@ class EmployeeHierarchy(SQLModel, table=True):
         primary_key=True,
         foreign_key="employees.user_id",
     )
-    depth: int = Field(ge=1)
+    depth: int = Field(ge=0)
 
     ancestor: "Employee" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "EmployeeHierarchy.ancestor_id"}

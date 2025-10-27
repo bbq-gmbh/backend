@@ -90,7 +90,7 @@ class EmployeeService:
         return EmployeeService.get_hirarchy_difference(employee, other) is not None
 
     @staticmethod
-    def is_higher(employee: Employee, other: Employee, same: bool = False) -> bool:
+    def is_higher(employee: Employee, other: Employee, *, same: bool = False) -> bool:
         """Check if 'employee' is higher in the hierarchy than 'other'.
 
         Args:
@@ -119,7 +119,7 @@ class EmployeeService:
         return False
 
     @staticmethod
-    def is_lower(employee: Employee, other: Employee, same: bool = False) -> bool:
+    def is_lower(employee: Employee, other: Employee, *, same: bool = False) -> bool:
         """Check if 'employee' is lower in the hierarchy than 'other'.
 
         Args:
