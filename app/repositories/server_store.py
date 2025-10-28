@@ -16,6 +16,6 @@ class ServerStoreRepository:
         return self.session.get_one(ServerStore, 1)
 
     def make(self, server_store_in: ServerStoreCreate) -> ServerStore:
-        server_store = ServerStore(id=1, timezone=server_store_in.timezone)
+        server_store = ServerStore(id=1, timezone=str(server_store_in.timezone))
         self.session.add(server_store)
         return server_store
