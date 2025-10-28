@@ -14,9 +14,9 @@ class SetupService:
     def check_is_setup(self) -> bool:
         return self.setup_repo.try_get() is not None
 
-    def setup_create(self, cred: str, setup_in: SetupCreate):
+    def setup_create(self, setup_in: SetupCreate):
         if self.setup_repo.try_get():
-            raise DomainError("Application is already setup.")
+            raise DomainError("Application cannot be setup again in this state")
 
         server_store = self.setup_repo.make(setup_in.server_store)
 
@@ -29,9 +29,10 @@ class SetupService:
             raise UserAlreadyExistsError(user_in.username)
 
         user = self.user_repo.create_user(user_in)
+        user.is_superuser = True
 
         self.session.commit()
-        
+
         self.session.refresh(server_store)
         self.session.refresh(user)
 
