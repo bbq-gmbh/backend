@@ -18,7 +18,7 @@ class SetupService:
         if self.setup_repo.try_get():
             raise DomainError("Application cannot be setup again in this state")
 
-        server_store = self.setup_repo.make(setup_in.server_store)
+        server_store = self.setup_repo.create(setup_in.server_store)
 
         user_in = setup_in.user
 

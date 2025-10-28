@@ -1,4 +1,5 @@
 from typing import Optional
+from zoneinfo import ZoneInfo
 from sqlmodel import Session
 
 from app.models.server_store import ServerStore
@@ -12,10 +13,13 @@ class ServerStoreRepository:
     def try_get(self) -> Optional[ServerStore]:
         return self.session.get(ServerStore, 1)
 
-    def current(self) -> ServerStore:
+    def get(self) -> ServerStore:
         return self.session.get_one(ServerStore, 1)
 
-    def make(self, server_store_in: ServerStoreCreate) -> ServerStore:
+    def create(self, server_store_in: ServerStoreCreate) -> ServerStore:
         server_store = ServerStore(id=1, timezone=str(server_store_in.timezone))
         self.session.add(server_store)
         return server_store
+
+    def get_timezone(self) -> ZoneInfo:
+        return ZoneInfo(self.get().timezone)
