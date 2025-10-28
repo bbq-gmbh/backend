@@ -8,3 +8,7 @@ class SetupCreate(BaseModel):
     user: UserCreate
     server_store: ServerStoreCreate
     pass
+
+
+class GetSetupStatus(BaseModel):
+    is_setup: bool

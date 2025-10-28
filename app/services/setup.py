@@ -1,24 +1,26 @@
 from app.core.exceptions import DomainError, UserAlreadyExistsError
 from app.repositories.server_store import ServerStoreRepository
+from app.repositories.user import UserRepository
 from app.schemas.setup import SetupCreate
 from app.services.user import UserService
 
 
 class SetupService:
-    def __init__(self, user_service: UserService, setup_repo: ServerStoreRepository):
-        self.user_service = user_service
-        self.user_repo = user_service.user_repo
-        self.setup_repo = setup_repo
-        self.session = user_service.session
+    def __init__(
+        self, user_repo: UserRepository, server_store_repo: ServerStoreRepository
+    ):
+        self.user_repo = user_repo
+        self.server_store_repo = server_store_repo
+        self.session = user_repo.session
 
     def check_is_setup(self) -> bool:
-        return self.setup_repo.try_get() is not None
+        return self.server_store_repo.try_get() is not None
 
     def setup_create(self, setup_in: SetupCreate):
-        if self.setup_repo.try_get():
+        if self.server_store_repo.try_get():
             raise DomainError("Application cannot be setup again in this state")
 
-        server_store = self.setup_repo.create(setup_in.server_store)
+        server_store = self.server_store_repo.create(setup_in.server_store)
 
         user_in = setup_in.user
 
