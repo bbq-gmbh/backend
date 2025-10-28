@@ -1,5 +1,8 @@
-from app.core.exceptions import ResourceNotFoundError, UserNotAuthorizedError
-from app.models.employee import Employee
+from app.core.exceptions import (
+    EmployeeNotFoundError,
+    ResourceNotFoundError,
+    UserNotAuthorizedError,
+)
 from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.repositories.time_entry import TimeEntryRepository
@@ -26,6 +29,13 @@ class TimeEntryService:
                 pass
             else:  # Ids don't match and we are not superuser
                 raise UserNotAuthorizedError()
+
+        target_employee = self.employee_repo.get_employee_by_user_id(
+            time_entry_in.user_id
+        )
+
+        if not target_employee:
+            raise EmployeeNotFoundError(user_id=time_entry_in.user_id)
 
         # TODO: check if this time entry is allowed to be made
 

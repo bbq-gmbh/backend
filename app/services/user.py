@@ -62,9 +62,8 @@ class UserService:
 
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
-        
+
         if user.employee:
-            
             pass
 
         self.user_repo.delete_user(user)
