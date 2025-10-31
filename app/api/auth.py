@@ -6,10 +6,9 @@ from app.api.dependencies import (
     UserFromRefreshTokenDep,
     UserServiceDep,
 )
-from app.schemas.auth import LoginRequest, TokenPair
+from app.schemas.auth import LoginRequest, TokenPair, PasswordChangeRequest
 from app.core.exceptions import InvalidCredentialsError
 from app.schemas.user import UserCreate
-from app.schemas.user import PasswordChangeRequest
 
 router = APIRouter()
 

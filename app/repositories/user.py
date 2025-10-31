@@ -1,9 +1,11 @@
 import uuid
 from typing import Optional
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from app.core.security import hash_password
+from app.models.employee import Employee
+from app.models.employee_hierarchy import EmployeeHierarchy
 from app.models.user import User
 from app.schemas.user import UserCreate
 
@@ -40,3 +42,68 @@ class UserRepository:
     def get_all_users(self) -> list[User]:
         """Retrieves all users from the database."""
         return list(self.session.exec(select(User)).all())
+
+    def get_users(self, page: int, page_size: int) -> list[User]:
+        exec = select(User).limit(page_size).offset(page * page_size)
+        return list(self.session.exec(exec).all())
+
+    def get_users_count(self) -> int:
+        return self.session.scalar(select(func.count()).select_from(User)) or 0
+
+    def get_user_employee_pairs(
+        self, page: int, page_size: int
+    ) -> list[tuple[User, Optional[Employee]]]:
+        exec = (
+            select(User, Employee)
+            .join(Employee, isouter=True)
+            .limit(page_size)
+            .offset(page * page_size)
+        )
+        return list(self.session.exec(exec).all())
+
+    def get_user_employee_pairs_count(self) -> int:
+        return (
+            self.session.scalar(
+                select(func.count()).select_from(
+                    select(User, Employee).join(Employee, isouter=True).subquery()
+                )
+            )
+            or 0
+        )
+
+    def get_lower_user_employee_pairs_paged(
+        self, target: Employee, page: int, page_size: int, *, same: bool = False
+    ) -> list[tuple[User, Employee]]:
+        exec = (
+            select(User, Employee)
+            .join(Employee)
+            .join(
+                EmployeeHierarchy,
+                Employee.user_id == EmployeeHierarchy.descendant_id,  # type: ignore
+            )
+            .where(EmployeeHierarchy.ancestor_id == target.user_id)
+            .where(EmployeeHierarchy.depth >= int(not same))
+            .limit(page_size)
+            .offset(page * page_size)
+        )
+
+        result = self.session.exec(exec)
+        return list(result.all())
+
+    def get_lower_user_employee_pairs_paged_count(
+        self, target: Employee, *, same: bool = False
+    ) -> int:
+        exec = (
+            select(User, Employee)
+            .join(Employee)
+            .join(
+                EmployeeHierarchy,
+                Employee.user_id == EmployeeHierarchy.descendant_id,  # type: ignore
+            )
+            .where(EmployeeHierarchy.ancestor_id == target.user_id)
+            .where(EmployeeHierarchy.depth >= int(not same))
+        )
+
+        return (
+            self.session.scalar(select(func.count()).select_from(exec.subquery())) or 0
+        )

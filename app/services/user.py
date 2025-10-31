@@ -1,6 +1,7 @@
 from typing import Optional
 
 from app.core.security import verify_password
+from app.models.employee import Employee
 from app.models.user import User
 
 from app.repositories.user import UserRepository
@@ -10,7 +11,8 @@ from app.core.exceptions import (
     ValidationError,
     InvalidCredentialsError,
 )
-from app.schemas.user import UserCreate
+from app.schemas.query import PagedResult
+from app.schemas.user import UserCreate, UserInfo
 
 
 class UserService:
@@ -86,10 +88,6 @@ class UserService:
         self.session.commit()
         self.session.refresh(user)
 
-    def get_all_users(self) -> list[User]:
-        """Retrieves all users."""
-        return self.user_repo.get_all_users()
-
     def change_password(self, user: User, current_password: str, new_password: str):
         if not verify_password(current_password, user.password_hash):
             raise InvalidCredentialsError()
@@ -102,3 +100,64 @@ class UserService:
         self.user_repo.rotate_token_key(user)
         self.session.commit()
         self.session.refresh(user)
+
+    def get_users(self, page: int, page_size: int) -> list[User]:
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+
+        return self.user_repo.get_users(page, page_size)
+
+    def get_user_employee_pairs(
+        self, page: int, page_size: int
+    ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+
+        return PagedResult(
+            page=self.user_repo.get_user_employee_pairs(page, page_size),
+            total=self.user_repo.get_user_employee_pairs_count(),
+        )
+
+    def get_lower_user_employee_pairs_paged(
+        self, employee: Employee, page: int, page_size: int
+    ) -> PagedResult[list[tuple[User, Employee]]]:
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+
+        return PagedResult(
+            page=self.user_repo.get_lower_user_employee_pairs_paged(
+                employee, page, page_size, same=True
+            ),
+            total=self.user_repo.get_lower_user_employee_pairs_paged_count(
+                employee, same=True
+            ),
+        )
+
+    def get_visible_user_employee_pairs(
+        self, actor: User, page: int, page_size: int
+    ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
+        if actor.is_superuser:
+            return self.get_user_employee_pairs(page, page_size)
+
+        if actor.employee:
+            return PagedResult(
+                page=self.user_repo.get_lower_user_employee_pairs_paged(
+                    actor.employee, page, page_size
+                ),
+                total=self.user_repo.get_lower_user_employee_pairs_paged_count(
+                    actor.employee
+                ),
+            )  # type: ignore
+
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+
+        return PagedResult(page=[(actor, actor.employee)], total=1)

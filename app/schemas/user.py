@@ -1,7 +1,7 @@
+from typing import Optional
 import uuid
 from datetime import datetime
-
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class UserCreate(BaseModel):
@@ -9,15 +9,17 @@ class UserCreate(BaseModel):
     password: str
 
 
-class UserRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class UserOnly(BaseModel):
     id: uuid.UUID
     username: str
     is_superuser: bool
     created_at: datetime
 
 
-class PasswordChangeRequest(BaseModel):
-    current_password: str
-    new_password: str
+class UserEmployeeOnly(BaseModel):
+    first_name: str
+    last_name: str
+
+
+class UserInfo(UserOnly):
+    employee: Optional[UserEmployeeOnly]
