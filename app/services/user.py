@@ -7,6 +7,7 @@ from app.models.user import User
 
 from app.repositories.user import UserRepository
 from app.core.exceptions import (
+    DomainError,
     EmployeeNotFoundError,
     UserAlreadyExistsError,
     UserNotAuthorizedError,
@@ -63,13 +64,11 @@ class UserService:
         return user
 
     def delete_user(self, actor: User, user: User):
-        # TODO
-
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
-
-        if user.employee:
-            pass
+        
+        if actor.id == user.id:
+            raise DomainError()
 
         self.user_repo.delete_user(user)
 
@@ -231,7 +230,7 @@ class UserService:
         if not user:
             raise UserNotFoundError(user_id=user_id)
 
-        if user_patch.new_employee and user.employee:
+        if user_patch.new_employee and not user.employee:
             raise EmployeeNotFoundError(user_id=user_id)
 
         if user_patch.new_username and user_patch.new_username != user.username:
@@ -240,11 +239,14 @@ class UserService:
                 raise UserAlreadyExistsError(user_patch.new_username)
             user.username = user_patch.new_username
 
+        if user_patch.new_is_superuser:
+            user.is_superuser = user_patch.new_is_superuser
+
         if user_patch.new_employee and user.employee:
             if user_patch.new_employee.new_first_name:
                 user.employee.first_name = user_patch.new_employee.new_first_name
             if user_patch.new_employee.new_last_name:
-                user.employee.first_name = user_patch.new_employee.new_last_name
+                user.employee.last_name = user_patch.new_employee.new_last_name
 
         self.session.add(user)
         self.session.commit()
