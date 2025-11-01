@@ -24,13 +24,13 @@ def create_user(user_in: UserCreate, user_service: UserServiceDep):
 
 
 @router.get(
-    "/", name="List Users", operation_id="listUsers", response_model=list[UserInfo]
+    "/", name="List Users", operation_id="listUsers"
 )
 def list_users(
     user: CurrentUserDep,
     user_service: UserServiceDep,
     page: Annotated[int, Query(ge=0)],
-    page_size: Annotated[int, Query(gt=1, lt=200)],
+    page_size: Annotated[int, Query(ge=1, le=200)],
 ):
     """
     Get a list of all users. Requires authentication.
