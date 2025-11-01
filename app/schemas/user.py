@@ -31,6 +31,5 @@ class UserEmployeePatch(BaseModel):
 
 
 class UserPatch(BaseModel):
-    id: uuid.UUID
     new_username: Optional[str]
     new_employee: Optional[UserEmployeePatch]

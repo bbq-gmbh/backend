@@ -223,16 +223,16 @@ class UserService:
     def _user_to_user_info(user: User) -> UserInfo:
         return UserService._user_employee_pair_to_user_info(user, user.employee)
 
-    def patch_user(self, actor: User, user_patch: UserPatch):
+    def patch_user(self, actor: User, user_id: uuid.UUID, user_patch: UserPatch):
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
 
-        user = self.user_repo.get_user_by_id(user_patch.id)
+        user = self.user_repo.get_user_by_id(user_id)
         if not user:
-            raise UserNotFoundError(user_id=user_patch.id)
+            raise UserNotFoundError(user_id=user_id)
 
         if user_patch.new_employee and user.employee:
-            raise EmployeeNotFoundError(user_id=user_patch.id)
+            raise EmployeeNotFoundError(user_id=user_id)
 
         if user_patch.new_username and user_patch.new_username != user.username:
             UserService._validate_username(user_patch.new_username)
