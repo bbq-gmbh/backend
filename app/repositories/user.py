@@ -107,3 +107,16 @@ class UserRepository:
         return (
             self.session.scalar(select(func.count()).select_from(exec.subquery())) or 0
         )
+
+    def is_employee_lower(
+        self, target_id: uuid.UUID, other_id: uuid.UUID, *, same: bool = False
+    ) -> bool:
+        exec = (
+            select(EmployeeHierarchy)
+            .where(
+                EmployeeHierarchy.ancestor_id == target_id,
+                EmployeeHierarchy.descendant_id == other_id,
+            )
+            .where(EmployeeHierarchy.depth >= int(not same))
+        )
+        return self.session.scalar(exec) is not None

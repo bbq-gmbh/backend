@@ -82,6 +82,23 @@ class UserService:
 
         self.delete_user(actor, user)
 
+    def get_visible_user_by_id(self, actor: User, id: uuid.UUID) -> User:
+        user = self.user_repo.get_user_by_id(id)
+
+        if not user:
+            raise UserNotFoundError(user_id=id)
+
+        if actor.is_superuser:
+            return user
+
+        if not user.employee:
+            raise UserNotAuthorizedError()
+
+        if self.user_repo.is_employee_lower(actor.id, user.id, same=True):
+            return user
+
+        raise UserNotAuthorizedError()
+
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.user_repo.get_user_by_username(username)
         if not user:
@@ -200,3 +217,7 @@ class UserService:
             if employee
             else None,
         )
+
+    @staticmethod
+    def _user_to_user_info(user: User) -> UserInfo:
+        return UserService._user_employee_pair_to_user_info(user, user.employee)
