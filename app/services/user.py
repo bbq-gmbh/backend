@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from app.core.security import verify_password
@@ -8,6 +9,7 @@ from app.repositories.user import UserRepository
 from app.core.exceptions import (
     UserAlreadyExistsError,
     UserNotAuthorizedError,
+    UserNotFoundError,
     ValidationError,
     InvalidCredentialsError,
 )
@@ -72,6 +74,13 @@ class UserService:
 
         self.session.commit()
         self.session.refresh(user)
+
+    def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
+        user = self.user_repo.get_user_by_id(user_id)
+        if not user:
+            raise UserNotFoundError(user_id=user_id)
+
+        self.delete_user(actor, user)
 
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.user_repo.get_user_by_username(username)

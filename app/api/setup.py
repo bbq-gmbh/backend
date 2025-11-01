@@ -23,5 +23,5 @@ def get_setup_status(setup_service: SetupServiceDep):
     operation_id="setupCreate",
     status_code=status.HTTP_201_CREATED,
 )
-def setup_create(setup_service: SetupServiceDep, setup_in: SetupCreate):
+def setup_create(setup_service: SetupServiceDep, setup_in: SetupCreate) -> None:
     setup_service.setup_create(setup_in)

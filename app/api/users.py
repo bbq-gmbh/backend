@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 from fastapi import APIRouter, Query, status
 
@@ -23,15 +24,13 @@ def create_user(user_in: UserCreate, user_service: UserServiceDep):
     return user_service.create_user(user_in=user_in)
 
 
-@router.get(
-    "/", name="List Users", operation_id="listUsers"
-)
+@router.get("/", name="List Users", operation_id="listUsers")
 def list_users(
     user: CurrentUserDep,
     user_service: UserServiceDep,
     page: Annotated[int, Query(ge=0)],
     page_size: Annotated[int, Query(ge=1, le=200)],
-):
+) -> PagedResult[list[UserInfo]]:
     """
     Get a list of all users. Requires authentication.
     """
@@ -42,3 +41,10 @@ def list_users(
         ],
         total=result.total,
     )
+
+
+@router.delete("/{id}", name="Delete Users", operation_id="deleteUser")
+def delete_user(
+    user: CurrentUserDep, user_service: UserServiceDep, id: uuid.UUID
+) -> None:
+    user_service.delete_user_by_id(user, id)
