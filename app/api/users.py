@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query, status
 
 from app.api.dependencies import CurrentUserDep, UserServiceDep
 from app.schemas.query import PagedResult
-from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo
+from app.schemas.user import UserCreate, UserInfo
 from app.services.user import UserService
 
 router = APIRouter()
