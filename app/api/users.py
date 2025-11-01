@@ -2,9 +2,10 @@ import uuid
 from typing import Annotated
 from fastapi import APIRouter, Query, status
 
-from app.api.dependencies import CurrentUserDep, UserServiceDep
+from app.api.dependencies import CurrentUserDep, UserRepositoryDep, UserServiceDep
+from app.core.exceptions import UserNotAuthorizedError, UserNotFoundError
 from app.schemas.query import PagedResult
-from app.schemas.user import UserCreate, UserInfo
+from app.schemas.user import UserCreate, UserInfo, UserPatch
 from app.services.user import UserService
 
 router = APIRouter()
@@ -55,3 +56,38 @@ def delete_user(
     user: CurrentUserDep, user_service: UserServiceDep, id: uuid.UUID
 ) -> None:
     user_service.delete_user_by_id(user, id)
+
+
+@router.get("/exists/{id}", name="User Id Exists", operation_id="userIdExists")
+def get_user_id_exists(
+    user: CurrentUserDep, user_repo: UserRepositoryDep, id: uuid.UUID
+):
+    if not user.is_superuser:
+        raise UserNotAuthorizedError()
+
+    target = user_repo.get_user_by_id(id)
+    if not target:
+        raise UserNotFoundError(user_id=id)
+
+
+@router.get(
+    "/exists/username/{name}", name="Username Exists", operation_id="usernameExists"
+)
+def get_username_exists(user: CurrentUserDep, user_repo: UserRepositoryDep, name: str):
+    if not user.is_superuser:
+        raise UserNotAuthorizedError()
+
+    target = user_repo.get_user_by_username(name)
+    if not target:
+        raise UserNotFoundError(username=name)
+
+
+@router.patch(
+    "/",
+    name="Patch User",
+    operation_id="patchUser",
+)
+def patch_user(
+    user: CurrentUserDep, user_service: UserServiceDep, user_patch: UserPatch
+):
+    return user_service.patch_user(user, user_patch=user_patch)
