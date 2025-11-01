@@ -43,8 +43,8 @@ def list_users(
     )
 
 
-@router.get("/{id}", name="Get User", operation_id="getUser")
-def get_user(
+@router.get("/{id}", name="Get User By Id", operation_id="getUserById")
+def get_user_by_id(
     user: CurrentUserDep, user_service: UserServiceDep, id: uuid.UUID
 ) -> UserInfo:
     return UserService._user_to_user_info(user_service.get_visible_user_by_id(user, id))
