@@ -12,7 +12,7 @@ from app.core.exceptions import (
     InvalidCredentialsError,
 )
 from app.schemas.query import PagedResult
-from app.schemas.user import UserCreate, UserInfo
+from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly
 
 
 class UserService:
@@ -161,3 +161,33 @@ class UserService:
             raise ValidationError("Page must be non negative")
 
         return PagedResult(page=[(actor, actor.employee)], total=1)
+
+    @staticmethod
+    def _user_to_user_only(user: User) -> UserOnly:
+        return UserOnly(
+            id=user.id,
+            username=user.username,
+            is_superuser=user.is_superuser,
+            created_at=user.created_at,
+        )
+
+    @staticmethod
+    def _employee_to_employee_only(employee: Employee) -> UserEmployeeOnly:
+        return UserEmployeeOnly(
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+        )
+
+    @staticmethod
+    def _user_employee_pair_to_user_info(
+        user: User, employee: Employee | None
+    ) -> UserInfo:
+        return UserInfo(
+            id=user.id,
+            username=user.username,
+            is_superuser=user.is_superuser,
+            created_at=user.created_at,
+            employee=UserService._employee_to_employee_only(employee)
+            if employee
+            else None,
+        )

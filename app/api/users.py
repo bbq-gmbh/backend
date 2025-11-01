@@ -4,6 +4,7 @@ from fastapi import APIRouter, Query, status
 from app.api.dependencies import CurrentUserDep, UserServiceDep
 from app.schemas.query import PagedResult
 from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo
+from app.services.user import UserService
 
 router = APIRouter()
 
@@ -37,19 +38,7 @@ def list_users(
     result = user_service.get_visible_user_employee_pairs(user, page, page_size)
     return PagedResult(
         page=[
-            UserInfo(
-                id=u.id,
-                username=u.username,
-                is_superuser=u.is_superuser,
-                created_at=u.created_at,
-                employee=UserEmployeeOnly(
-                    first_name=e.first_name,
-                    last_name=e.last_name,
-                )
-                if e
-                else None,
-            )
-            for u, e in result.page
+            UserService._user_employee_pair_to_user_info(u, e) for u, e in result.page
         ],
         total=result.total,
     )
