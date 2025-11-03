@@ -291,3 +291,133 @@ class EmployeeService:
                 break
 
         return False
+
+    def rebuild_hierarchy(self, force: bool = False) -> dict:
+        """Rebuild the entire employee hierarchy.
+        
+        This orchestrates the full hierarchy rebuild process:
+        1. Optionally validates data integrity before rebuild
+        2. Calls repository method to rebuild hierarchy table
+        3. Validates the rebuilt hierarchy
+        4. Returns comprehensive report
+        
+        Args:
+            force: If True, skip pre-validation checks
+            
+        Returns:
+            Dictionary containing:
+            - success: Whether rebuild succeeded
+            - stats: Rebuild statistics
+            - validation: Validation results
+        """
+        import time
+        
+        start_time = time.time()
+        
+        # Pre-validation (unless forced)
+        pre_validation_issues = []
+        if not force:
+            orphaned = self.hierarchy_repo.find_orphaned_employees()
+            if orphaned:
+                pre_validation_issues.append(
+                    f"Found {len(orphaned)} orphaned employees with invalid supervisor_id"
+                )
+        
+        # Perform rebuild
+        try:
+            rebuild_stats = self.hierarchy_repo.rebuild_hierarchy_full()
+            self.session.commit()
+            
+            duration = time.time() - start_time
+            
+            stats = {
+                **rebuild_stats,
+                'duration_seconds': duration
+            }
+            
+            # Post-validation
+            post_stats = self.hierarchy_repo.get_hierarchy_statistics()
+            
+            return {
+                "success": True,
+                "message": "Hierarchy rebuilt successfully",
+                "stats": stats,
+                "validation": {
+                    "pre_validation_issues": pre_validation_issues,
+                    "post_rebuild_stats": post_stats,
+                },
+            }
+        except Exception as e:
+            self.session.rollback()
+            return {
+                "success": False,
+                "message": f"Hierarchy rebuild failed: {str(e)}",
+                "stats": {},
+                "validation": {
+                    "pre_validation_issues": pre_validation_issues,
+                    "error": str(e),
+                },
+            }
+    
+    def get_hierarchy_for_employee(self, employee: Employee) -> dict:
+        """Get hierarchy information for a specific employee.
+        
+        Returns information about the employee's position in the hierarchy,
+        including their supervisors and subordinates.
+        
+        Args:
+            employee: The employee to get hierarchy info for
+            
+        Returns:
+            Dictionary with employee info, supervisors, and subordinates
+        """
+        from app.schemas.employee import HierarchyNode
+        
+        # Get employee info with depth
+        depth = self._get_depth(employee)
+        employee_node = HierarchyNode(
+            user_id=employee.user_id,
+            username=employee.user.username,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+            supervisor_id=employee.supervisor_id,
+            depth=depth,
+        )
+        
+        # Get supervisors (ordered by depth, closest first)
+        supervisors = self.hierarchy_repo.get_supervisors(
+            employee.user_id, include_self=False
+        )
+        supervisor_nodes = [
+            HierarchyNode(
+                user_id=sup.user_id,
+                username=sup.user.username,
+                first_name=sup.first_name,
+                last_name=sup.last_name,
+                supervisor_id=sup.supervisor_id,
+                depth=self._get_depth(sup),
+            )
+            for sup in supervisors
+        ]
+        
+        # Get subordinates (ordered by depth, closest first)
+        subordinates = self.hierarchy_repo.get_subordinates(
+            employee.user_id, include_self=False
+        )
+        subordinate_nodes = [
+            HierarchyNode(
+                user_id=sub.user_id,
+                username=sub.user.username,
+                first_name=sub.first_name,
+                last_name=sub.last_name,
+                supervisor_id=sub.supervisor_id,
+                depth=self._get_depth(sub),
+            )
+            for sub in subordinates
+        ]
+        
+        return {
+            "employee": employee_node,
+            "supervisors": supervisor_nodes,
+            "subordinates": subordinate_nodes,
+        }

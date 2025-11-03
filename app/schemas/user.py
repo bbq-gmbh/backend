@@ -28,6 +28,7 @@ class UserInfo(UserOnly):
 class UserEmployeePatch(BaseModel):
     new_first_name: Optional[str] = None
     new_last_name: Optional[str] = None
+    new_supervisor_id: Optional[uuid.UUID] = None
 
 
 class UserPatch(BaseModel):

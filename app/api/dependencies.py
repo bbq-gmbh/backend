@@ -37,16 +37,6 @@ def get_user_repository(session: DatabaseSession) -> UserRepository:
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
 
 
-def get_user_service(
-    user_repo: UserRepositoryDep,
-) -> UserService:
-    """Provides a user service dependency."""
-    return UserService(user_repo=user_repo)
-
-
-UserServiceDep = Annotated[UserService, Depends(get_user_service)]
-
-
 # Employee
 
 
@@ -68,6 +58,22 @@ def get_employee_hierarchy_repository(
 EmployeeHierarchyRepositoryDep = Annotated[
     EmployeeHierarchyRepository, Depends(get_employee_hierarchy_repository)
 ]
+
+
+def get_user_service(
+    user_repo: UserRepositoryDep,
+    employee_repo: EmployeeRepositoryDep,
+    hierarchy_repo: EmployeeHierarchyRepositoryDep,
+) -> UserService:
+    """Provides a user service dependency."""
+    return UserService(
+        user_repo=user_repo,
+        employee_repo=employee_repo,
+        hierarchy_repo=hierarchy_repo
+    )
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
 def get_employee_service(

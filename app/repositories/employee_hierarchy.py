@@ -252,3 +252,67 @@ class EmployeeHierarchyRepository:
             "avg_depth": float(avg_depth),
             "employees_without_supervisor": employees_without_supervisor,
         }
+
+    def rebuild_hierarchy_full(self) -> dict[str, int]:
+        """Completely rebuild the employee hierarchy table.
+        
+        This method:
+        1. Deletes all records from employee_hierarchy table
+        2. For each employee, adds self-reference (depth=0)
+        3. For each employee, traverses supervisor chain to create all paths
+        
+        Returns:
+            Dictionary with statistics:
+            - records_deleted: Number of old records removed
+            - records_created: Number of new records created
+            - employees_processed: Number of employees processed
+        """
+        # Step 1: Clear all existing hierarchy records
+        records_deleted = self.clear_all_hierarchy()
+        
+        # Step 2: Get all employees
+        all_employees = self.get_all_employees()
+        employees_processed = len(all_employees)
+        records_created = 0
+        
+        # Create a map for quick employee lookup
+        employee_map = {emp.user_id: emp for emp in all_employees}
+        
+        # Step 3: Add self-references for all employees
+        for employee in all_employees:
+            self.add_self_reference(employee)
+            records_created += 1
+        
+        # Step 4: For each employee, create paths to all ancestors
+        for employee in all_employees:
+            if employee.supervisor_id:
+                # Traverse up the supervisor chain
+                current_id = employee.supervisor_id
+                depth = 1
+                
+                while current_id is not None and depth <= 100:  # Safety limit
+                    # Create hierarchy entry
+                    hierarchy_entry = EmployeeHierarchy(
+                        ancestor_id=current_id,
+                        descendant_id=employee.user_id,
+                        depth=depth,
+                    )
+                    self.session.add(hierarchy_entry)
+                    records_created += 1
+                    
+                    # Move up to next supervisor
+                    current_emp = employee_map.get(current_id)
+                    if current_emp and current_emp.supervisor_id:
+                        current_id = current_emp.supervisor_id
+                        depth += 1
+                    else:
+                        break
+        
+        # Commit all changes
+        self.session.flush()
+        
+        return {
+            "records_deleted": records_deleted,
+            "records_created": records_created,
+            "employees_processed": employees_processed,
+        }
