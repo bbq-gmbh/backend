@@ -22,7 +22,7 @@ class UserEmployeeOnly(BaseModel):
 
 
 class UserInfo(UserOnly):
-    employee: Optional[UserEmployeeOnly]
+    employee: Optional[UserEmployeeOnly] = None
 
 
 class UserEmployeePatch(BaseModel):
