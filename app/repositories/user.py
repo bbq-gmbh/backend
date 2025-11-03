@@ -58,9 +58,9 @@ class UserRepository:
 
         if is_employee is not None:
             if is_employee:
-                query = query.where(User.employee.is_not(None))  # type: ignore
+                query = query.where(User.employee != None)  # type: ignore
             else:
-                query = query.where(User.employee.is_(None))  # type: ignore
+                query = query.where(User.employee == None)  # type: ignore
 
         query = query.limit(page_size).offset(page * page_size)
         return list(self.session.exec(query).all())
@@ -71,9 +71,9 @@ class UserRepository:
 
         if is_employee is not None:
             if is_employee:
-                query = query.where(User.employee.is_not(None))  # type: ignore
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
             else:
-                query = query.where(User.employee.is_(None))  # type: ignore
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
 
         return self.session.scalar(query) or 0
 
@@ -110,9 +110,9 @@ class UserRepository:
 
         if is_employee is not None:
             if is_employee:
-                query = query.where(User.employee.is_not(None))  # type: ignore
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
             else:
-                query = query.where(User.employee.is_(None))  # type: ignore
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
 
         query = query.limit(page_size).offset(page * page_size)
         return list(self.session.exec(query).all())
@@ -129,9 +129,9 @@ class UserRepository:
 
         if is_employee is not None:
             if is_employee:
-                query = query.where(User.employee.is_not(None))  # type: ignore
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
             else:
-                query = query.where(User.employee.is_(None))  # type: ignore
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
 
         return self.session.scalar(query) or 0
 
