@@ -452,3 +452,115 @@ class TestPatchUser:
         ancestors = hierarchy_repo.get_ancestor_ids(emp_user.id, include_self=False)
         assert supervisor_user.id in ancestors
 
+    def test_patch_user_prevents_circular_reference(self, client, superuser_client, session):
+        """Test that patching user with circular supervisor reference is prevented."""
+        from app.models.user import User
+        from app.models.employee import Employee
+        from app.core.security import hash_password
+        from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+
+        hierarchy_repo = EmployeeHierarchyRepository(session)
+
+        # Create two employees: emp1 supervises emp2
+        emp1_user = User(
+            username="emp1circular",
+            password_hash=hash_password("password123"),
+        )
+        emp2_user = User(
+            username="emp2circular",
+            password_hash=hash_password("password123"),
+        )
+        session.add_all([emp1_user, emp2_user])
+        session.commit()
+
+        emp1 = Employee(
+            user_id=emp1_user.id,
+            first_name="Employee",
+            last_name="One",
+        )
+        emp2 = Employee(
+            user_id=emp2_user.id,
+            first_name="Employee",
+            last_name="Two",
+        )
+        session.add_all([emp1, emp2])
+        session.commit()
+        hierarchy_repo.add_self_reference(emp1)
+        hierarchy_repo.add_self_reference(emp2)
+        
+        # Set up initial hierarchy: emp1 supervises emp2
+        from app.services.employee import EmployeeService
+        from app.repositories.employee import EmployeeRepository
+        from app.repositories.user import UserRepository
+        
+        employee_service = EmployeeService(
+            EmployeeRepository(session),
+            hierarchy_repo,
+            UserRepository(session)
+        )
+        employee_service.assign_supervisor_to_employee(emp2, emp1)
+
+        # Try to create circular reference: make emp2 supervise emp1 (should fail)
+        response = superuser_client.patch(
+            f"/users/{emp1_user.id}",
+            json={
+                "new_employee": {
+                    "new_supervisor_id": str(emp2_user.id),
+                }
+            },
+        )
+        
+        # Should return 400 (HierarchyCycleError maps to bad request)
+        assert response.status_code == 400
+        assert "cycle" in response.json()["detail"].lower()
+
+        # Verify hierarchy is unchanged
+        session.refresh(emp1)
+        session.refresh(emp2)
+        assert emp1.supervisor_id is None  # emp1 still has no supervisor
+        assert emp2.supervisor_id == emp1_user.id  # emp2 still supervised by emp1
+
+    def test_patch_user_prevents_self_supervision(self, client, superuser_client, session):
+        """Test that an employee cannot be assigned as their own supervisor."""
+        from app.models.user import User
+        from app.models.employee import Employee
+        from app.core.security import hash_password
+        from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+
+        hierarchy_repo = EmployeeHierarchyRepository(session)
+
+        emp_user = User(
+            username="selfsuper",
+            password_hash=hash_password("password123"),
+        )
+        session.add(emp_user)
+        session.commit()
+        session.refresh(emp_user)
+
+        employee = Employee(
+            user_id=emp_user.id,
+            first_name="Self",
+            last_name="Supervisor",
+        )
+        session.add(employee)
+        session.commit()
+        hierarchy_repo.add_self_reference(employee)
+
+        # Try to assign employee as their own supervisor
+        response = superuser_client.patch(
+            f"/users/{emp_user.id}",
+            json={
+                "new_employee": {
+                    "new_supervisor_id": str(emp_user.id),
+                }
+            },
+        )
+        
+        # Should return 400 (domain error)
+        assert response.status_code == 400
+        assert "own supervisor" in response.json()["detail"].lower()
+
+        # Verify employee still has no supervisor
+        session.refresh(employee)
+        assert employee.supervisor_id is None
+
