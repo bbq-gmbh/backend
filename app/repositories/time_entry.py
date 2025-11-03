@@ -9,8 +9,7 @@ from app.schemas.time_entry import TimeEntryCreate
 class TimeEntryRepository:
     def __init__(self, employee_repo: EmployeeRepository):
         self.employee_repo = employee_repo
-        self.user_repo = employee_repo.user_repo
-        self.session = self.user_repo.session
+        self.session = employee_repo.session
 
     def create_time_entry(
         self, author: User, time_entry_in: TimeEntryCreate
