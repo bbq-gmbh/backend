@@ -23,11 +23,11 @@ from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly, U
 
 class UserService:
     def __init__(
-        self, 
-        *, 
+        self,
+        *,
         user_repo: UserRepository,
         employee_repo: Optional[EmployeeRepository] = None,
-        hierarchy_repo: Optional[EmployeeHierarchyRepository] = None
+        hierarchy_repo: Optional[EmployeeHierarchyRepository] = None,
     ):
         self.user_repo = user_repo
         self.employee_repo = employee_repo
@@ -82,11 +82,11 @@ class UserService:
 
         if user.employee and self.employee_repo and self.hierarchy_repo:
             from app.services.employee import EmployeeService
-            
+
             employee_service = EmployeeService(
                 employee_repo=self.employee_repo,
                 employee_hierarchy_repo=self.hierarchy_repo,
-                user_repo=self.user_repo
+                user_repo=self.user_repo,
             )
             employee_service.delete_employee_and_heal_hierarchy(user.employee)
             user.employee = None
@@ -207,6 +207,43 @@ class UserService:
 
         return PagedResult(page=[(actor, actor.employee)], total=1)
 
+    def search_users_by_username(
+        self, actor: User, username_query: str, page: int, page_size: int
+    ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
+        """Search users by username with authorization.
+
+        Superusers can search all users. Regular users can only search users
+        they are authorized to see (same or lower in hierarchy).
+
+        Args:
+            actor: The user performing the search
+            username_query: The username search query string
+            page: Page number (0-indexed)
+            page_size: Number of results per page
+
+        Returns:
+            PagedResult containing matching users and total count
+        """
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+        if not username_query:
+            raise ValidationError("Search query cannot be empty")
+
+        # For now, superusers can search all users
+        # Regular users would need hierarchy-aware search (future enhancement)
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        users = self.user_repo.search_users_by_username(username_query, page, page_size)
+        total = self.user_repo.search_users_by_username_count(username_query)
+
+        # Convert to user-employee pairs
+        pairs = [(user, user.employee) for user in users]
+
+        return PagedResult(page=pairs, total=total)
+
     @staticmethod
     def _user_to_user_only(user: User) -> UserOnly:
         return UserOnly(
@@ -266,43 +303,48 @@ class UserService:
                 user.employee.first_name = user_patch.new_employee.new_first_name
             if user_patch.new_employee.new_last_name:
                 user.employee.last_name = user_patch.new_employee.new_last_name
-            
-            if 'new_supervisor_id' in user_patch.new_employee.model_fields_set:
+
+            if "new_supervisor_id" in user_patch.new_employee.model_fields_set:
                 self._handle_supervisor_change(
-                    user.employee, 
-                    user_patch.new_employee.new_supervisor_id
+                    user.employee, user_patch.new_employee.new_supervisor_id
                 )
 
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
 
-    def _handle_supervisor_change(self, employee: Employee, new_supervisor_id: Optional[uuid.UUID]):
+    def _handle_supervisor_change(
+        self, employee: Employee, new_supervisor_id: Optional[uuid.UUID]
+    ):
         """Handle changing an employee's supervisor with hierarchy updates.
-        
+
         Args:
             employee: The employee whose supervisor is being changed
             new_supervisor_id: The new supervisor's user_id, or None to remove supervisor
         """
         if not self.employee_repo or not self.hierarchy_repo:
-            raise ValidationError("Employee repository and hierarchy repository required for supervisor changes")
-        
+            raise ValidationError(
+                "Employee repository and hierarchy repository required for supervisor changes"
+            )
+
         from app.services.employee import EmployeeService
-        
+
         employee_service = EmployeeService(
             employee_repo=self.employee_repo,
             employee_hierarchy_repo=self.hierarchy_repo,
-            user_repo=self.user_repo
+            user_repo=self.user_repo,
         )
-        
+
         if new_supervisor_id:
-            new_supervisor = self.employee_repo.get_employee_by_user_id(new_supervisor_id)
+            new_supervisor = self.employee_repo.get_employee_by_user_id(
+                new_supervisor_id
+            )
             if not new_supervisor:
                 raise EmployeeNotFoundError(user_id=new_supervisor_id)
-            
+
             if employee.supervisor_id:
                 employee_service.remove_supervisor_from_employee(employee)
-            
+
             employee_service.assign_supervisor_to_employee(employee, new_supervisor)
         else:
             if employee.supervisor_id:

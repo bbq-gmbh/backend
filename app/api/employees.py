@@ -35,9 +35,7 @@ def get_my_employee(user: CurrentUserDep):
     response_model=HierarchyResponse,
 )
 def get_employee_hierarchy(
-    user: CurrentUserDep,
-    employee_service: EmployeeServiceDep,
-    user_id: uuid.UUID
+    user: CurrentUserDep, employee_service: EmployeeServiceDep, user_id: uuid.UUID
 ):
     """Get hierarchy information for an employee including supervisors and subordinates."""
     # Get the target employee
@@ -47,7 +45,7 @@ def get_employee_hierarchy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Employee not found for user {user_id}",
         )
-    
+
     # Authorization check
     if not user.is_superuser:
         # Non-superusers can only view their own hierarchy or subordinates
@@ -64,7 +62,7 @@ def get_employee_hierarchy(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this employee's hierarchy",
             )
-    
+
     # Get and return hierarchy
     hierarchy_data = employee_service.get_hierarchy_for_employee(target_employee)
     return HierarchyResponse(**hierarchy_data)
@@ -118,14 +116,12 @@ def create_employee(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_employee(
-    user: CurrentUserDep,
-    user_id: uuid.UUID,
-    employee_service: EmployeeServiceDep
+    user: CurrentUserDep, user_id: uuid.UUID, employee_service: EmployeeServiceDep
 ):
     """Delete an employee and heal the hierarchy (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
-    
+
     try:
         employee = employee_service.get_employee_by_user_id(user_id)
         if not employee:
@@ -133,13 +129,12 @@ def delete_employee(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Employee not found for user {user_id}",
             )
-        
+
         employee_service.delete_employee_and_heal_hierarchy(employee)
-        
+
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User {user_id} not found"
         )
 
 
@@ -153,14 +148,16 @@ def delete_employee(
 def rebuild_employee_hierarchy(
     user: CurrentUserDep,
     employee_service: EmployeeServiceDep,
-    force: bool = Query(False, description="Force rebuild without pre-validation checks"),
+    force: bool = Query(
+        False, description="Force rebuild without pre-validation checks"
+    ),
 ):
     """Rebuild the entire employee hierarchy table (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
-    
+
     result = employee_service.rebuild_hierarchy(force=force)
-    
+
     if result["success"]:
         return HierarchyRebuildResponse(
             success=True,

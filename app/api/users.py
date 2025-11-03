@@ -44,6 +44,28 @@ def list_users(
     )
 
 
+@router.get("/search", name="Search Users", operation_id="searchUsers")
+def search_users(
+    user: CurrentUserDep,
+    user_service: UserServiceDep,
+    query: Annotated[str, Query(min_length=1)],
+    page: Annotated[int, Query(ge=0)],
+    page_size: Annotated[int, Query(ge=1, le=200)],
+) -> PagedResult[list[UserInfo]]:
+    """
+    Search users by username with paging. Requires authentication and superuser privileges.
+
+    The search is case-insensitive and matches partial usernames.
+    """
+    result = user_service.search_users_by_username(user, query, page, page_size)
+    return PagedResult(
+        page=[
+            UserService._user_employee_pair_to_user_info(u, e) for u, e in result.page
+        ],
+        total=result.total,
+    )
+
+
 @router.get("/{id}", name="Get User By Id", operation_id="getUserById")
 def get_user_by_id(
     user: CurrentUserDep, user_service: UserServiceDep, id: uuid.UUID

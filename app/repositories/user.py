@@ -50,6 +50,27 @@ class UserRepository:
     def get_users_count(self) -> int:
         return self.session.scalar(select(func.count()).select_from(User)) or 0
 
+    def search_users_by_username(
+        self, username_query: str, page: int, page_size: int
+    ) -> list[User]:
+        """Search users by username using case-insensitive substring matching."""
+        statement = (
+            select(User)
+            .where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+            .limit(page_size)
+            .offset(page * page_size)
+        )
+        return list(self.session.exec(statement).all())
+
+    def search_users_by_username_count(self, username_query: str) -> int:
+        """Count users matching the username search query."""
+        statement = (
+            select(func.count())
+            .select_from(User)
+            .where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+        )
+        return self.session.scalar(statement) or 0
+
     def get_user_employee_pairs(
         self, page: int, page_size: int
     ) -> list[tuple[User, Optional[Employee]]]:

@@ -67,9 +67,7 @@ def get_user_service(
 ) -> UserService:
     """Provides a user service dependency."""
     return UserService(
-        user_repo=user_repo,
-        employee_repo=employee_repo,
-        hierarchy_repo=hierarchy_repo
+        user_repo=user_repo, employee_repo=employee_repo, hierarchy_repo=hierarchy_repo
     )
 
 
