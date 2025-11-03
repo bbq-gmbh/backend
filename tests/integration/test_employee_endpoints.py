@@ -8,7 +8,7 @@ class TestGetEmployeeHierarchy:
         """Test that getting hierarchy requires authentication."""
         import uuid
         test_user_id = str(uuid.uuid4())
-        response = client.get(f"/employees/hierarchy?user_id={test_user_id}")
+        response = client.get(f"/employees/{test_user_id}/hierarchy")
         assert response.status_code == 403
 
     def test_get_own_hierarchy_as_employee(
@@ -25,7 +25,7 @@ class TestGetEmployeeHierarchy:
         assert emp_response.status_code == 201
 
         # Get hierarchy
-        response = authenticated_client.get(f"/employees/hierarchy?user_id={created_user.id}")
+        response = authenticated_client.get(f"/employees/{created_user.id}/hierarchy")
         assert response.status_code == 200
 
         data = response.json()
@@ -64,7 +64,7 @@ class TestGetEmployeeHierarchy:
 
         # Superuser gets this user's hierarchy
         response = superuser_client.get(
-            f"/employees/hierarchy?user_id={test_user.id}"
+            f"/employees/{test_user.id}/hierarchy"
         )
         assert response.status_code == 200
 
@@ -97,7 +97,7 @@ class TestGetEmployeeHierarchy:
 
         # Try to get other user's hierarchy (should fail)
         response = authenticated_client.get(
-            f"/employees/hierarchy?user_id={other_user.id}"
+            f"/employees/{other_user.id}/hierarchy"
         )
         assert response.status_code == 403
 

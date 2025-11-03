@@ -28,7 +28,7 @@ def get_my_employee(user: CurrentUserDep):
 
 
 @router.get(
-    "/hierarchy",
+    "/{user_id}/hierarchy",
     name="Get Employee Hierarchy",
     operation_id="getEmployeeHierarchy",
     status_code=status.HTTP_200_OK,
