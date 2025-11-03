@@ -374,3 +374,81 @@ class TestPatchUser:
         ancestors = hierarchy_repo.get_ancestor_ids(emp_user.id, include_self=False)
         assert len(ancestors) == 0
 
+    def test_patch_user_employee_without_supervisor_field(self, client, superuser_client, session):
+        """Test that patching employee without new_supervisor_id field doesn't affect existing supervisor."""
+        from app.models.user import User
+        from app.models.employee import Employee
+        from app.core.security import hash_password
+        from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+
+        hierarchy_repo = EmployeeHierarchyRepository(session)
+
+        # Create supervisor
+        supervisor_user = User(
+            username="unchangedsup",
+            password_hash=hash_password("password123"),
+        )
+        session.add(supervisor_user)
+        session.commit()
+        session.refresh(supervisor_user)
+
+        supervisor_emp = Employee(
+            user_id=supervisor_user.id,
+            first_name="Unchanged",
+            last_name="Supervisor",
+        )
+        session.add(supervisor_emp)
+        session.commit()
+        hierarchy_repo.add_self_reference(supervisor_emp)
+
+        # Create employee with supervisor
+        emp_user = User(
+            username="empunchangedsup",
+            password_hash=hash_password("password123"),
+        )
+        session.add(emp_user)
+        session.commit()
+        session.refresh(emp_user)
+
+        employee = Employee(
+            user_id=emp_user.id,
+            first_name="Employee",
+            last_name="WithSupervisor",
+            supervisor_id=supervisor_user.id,
+        )
+        session.add(employee)
+        session.commit()
+        hierarchy_repo.add_self_reference(employee)
+        
+        # Add initial hierarchy
+        from app.services.employee import EmployeeService
+        from app.repositories.employee import EmployeeRepository
+        from app.repositories.user import UserRepository
+        
+        employee_service = EmployeeService(
+            EmployeeRepository(session),
+            hierarchy_repo,
+            UserRepository(session)
+        )
+        employee_service.assign_supervisor_to_employee(employee, supervisor_emp)
+
+        # Patch employee name WITHOUT touching supervisor
+        response = superuser_client.patch(
+            f"/users/{emp_user.id}",
+            json={
+                "new_employee": {
+                    "new_first_name": "ChangedName",
+                }
+            },
+        )
+        assert response.status_code == 200
+
+        # Verify supervisor is UNCHANGED
+        session.refresh(employee)
+        assert employee.supervisor_id == supervisor_user.id
+        assert employee.first_name == "ChangedName"
+
+        # Verify hierarchy is still intact
+        ancestors = hierarchy_repo.get_ancestor_ids(emp_user.id, include_self=False)
+        assert supervisor_user.id in ancestors
+
