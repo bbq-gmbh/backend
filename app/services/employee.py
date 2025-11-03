@@ -87,6 +87,65 @@ class EmployeeService:
 
         self.session.commit()
 
+    def delete_employee_and_heal_hierarchy(self, employee: Employee) -> None:
+        """Delete an employee and heal the hierarchy by reconnecting their subordinates.
+        
+        When an employee is deleted from the hierarchy (e.g., A -> B -> C), this method:
+        1. Gets the employee's supervisor (A) and direct subordinates (C)
+        2. Removes all hierarchy paths involving the deleted employee
+        3. Reassigns all direct subordinates to the employee's supervisor (A -> C)
+        4. Recreates hierarchy paths for each subordinate and their descendants
+        5. Deletes the employee record
+        
+        If the employee has no supervisor, their subordinates become top-level employees.
+        
+        Args:
+            employee: The employee to delete
+        """
+        direct_subordinates = [
+            sub for sub in employee.subordinates if sub.supervisor_id == employee.user_id
+        ]
+        
+        supervisor_id = employee.supervisor_id
+        supervisor = employee.supervisor
+        
+        for subordinate in direct_subordinates:
+            descendant_ids = self.hierarchy_repo.get_descendant_ids(
+                subordinate.user_id, include_self=True
+            )
+            
+            if employee.supervisor_id:
+                ancestor_ids_to_remove = self.hierarchy_repo.get_ancestor_ids(
+                    employee.user_id, include_self=True
+                )
+            else:
+                ancestor_ids_to_remove = [employee.user_id]
+            
+            self.hierarchy_repo.delete_hierarchy_paths(ancestor_ids_to_remove, descendant_ids)
+        
+        ancestor_ids_of_employee = self.hierarchy_repo.get_ancestor_ids(employee.user_id, include_self=False)
+        if ancestor_ids_of_employee:
+            self.hierarchy_repo.delete_hierarchy_paths(ancestor_ids_of_employee, [employee.user_id])
+        
+        self.hierarchy_repo.delete_hierarchy_paths([employee.user_id], [employee.user_id])
+        
+        for subordinate in direct_subordinates:
+            subordinate.supervisor_id = supervisor_id
+            subordinate.supervisor = supervisor
+            self.session.add(subordinate)
+            
+            if supervisor_id:
+                new_ancestor_ids = self.hierarchy_repo.get_ancestor_ids(
+                    supervisor_id, include_self=True
+                )
+                descendant_ids = self.hierarchy_repo.get_descendant_ids(
+                    subordinate.user_id, include_self=True
+                )
+                self.hierarchy_repo.insert_hierarchy_paths(new_ancestor_ids, descendant_ids)
+        
+        self.employee_repo.delete_employee(employee)
+        self.session.commit()
+
     def _validate_supervisor_assignment(
         self, target: Employee, supervisor: Employee
     ) -> None:
@@ -190,11 +249,9 @@ class EmployeeService:
         Returns:
             Positive int if employee is higher, 0 if same, negative if lower, None if not related.
         """
-        # Check if they are the same employee
         if employee.user_id == other.user_id:
             return 0
 
-        # Check if employee is a supervisor of other (going up from other)
         current = other
         for level in range(1, Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS + 1):
             if current.supervisor_id is None:
@@ -205,7 +262,6 @@ class EmployeeService:
             if current is None:
                 break
 
-        # Check if employee is a subordinate of other (going up from employee)
         current = employee
         for level in range(-1, -(Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS + 1), -1):
             if current.supervisor_id is None:
@@ -216,7 +272,6 @@ class EmployeeService:
             if current is None:
                 break
 
-        # Not related
         return None
 
     @staticmethod
@@ -246,11 +301,9 @@ class EmployeeService:
         Returns:
             True if employee is a supervisor of other (or same when same=True), False otherwise.
         """
-        # Check if they are the same employee
         if employee.user_id == other.user_id:
             return same
 
-        # Check if employee is a supervisor of other (going up from other)
         current = other
         for _ in range(Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS):
             if current.supervisor_id is None:
@@ -314,7 +367,6 @@ class EmployeeService:
         
         start_time = time.time()
         
-        # Pre-validation (unless forced)
         pre_validation_issues = []
         if not force:
             orphaned = self.hierarchy_repo.find_orphaned_employees()
@@ -323,7 +375,6 @@ class EmployeeService:
                     f"Found {len(orphaned)} orphaned employees with invalid supervisor_id"
                 )
         
-        # Perform rebuild
         try:
             rebuild_stats = self.hierarchy_repo.rebuild_hierarchy_full()
             self.session.commit()
@@ -335,7 +386,6 @@ class EmployeeService:
                 'duration_seconds': duration
             }
             
-            # Post-validation
             post_stats = self.hierarchy_repo.get_hierarchy_statistics()
             
             return {
@@ -373,7 +423,6 @@ class EmployeeService:
         """
         from app.schemas.employee import HierarchyNode
         
-        # Get employee info with depth
         depth = self._get_depth(employee)
         employee_node = HierarchyNode(
             user_id=employee.user_id,
@@ -384,7 +433,6 @@ class EmployeeService:
             depth=depth,
         )
         
-        # Get supervisors (ordered by depth, closest first)
         supervisors = self.hierarchy_repo.get_supervisors(
             employee.user_id, include_self=False
         )
@@ -400,7 +448,6 @@ class EmployeeService:
             for sup in supervisors
         ]
         
-        # Get subordinates (ordered by depth, closest first)
         subordinates = self.hierarchy_repo.get_subordinates(
             employee.user_id, include_self=False
         )

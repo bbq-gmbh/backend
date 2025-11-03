@@ -45,6 +45,27 @@ class EmployeeHierarchyRepository:
         )
         self.session.exec(exec_del)
 
+    def delete_hierarchy_paths_for_employee(self, user_id: uuid.UUID) -> None:
+        """Delete all hierarchy paths involving an employee.
+        
+        This removes all records where the employee appears as either ancestor or descendant.
+        Used when completely removing an employee from the hierarchy.
+        
+        Args:
+            user_id: The employee's user ID to remove from hierarchy
+        """
+        # Delete where employee is ancestor (all their subordinates)
+        exec_del_ancestor = delete(EmployeeHierarchy).where(
+            EmployeeHierarchy.ancestor_id == user_id  # type: ignore
+        )
+        self.session.exec(exec_del_ancestor)
+        
+        # Delete where employee is descendant (all their supervisors)
+        exec_del_descendant = delete(EmployeeHierarchy).where(
+            EmployeeHierarchy.descendant_id == user_id  # type: ignore
+        )
+        self.session.exec(exec_del_descendant)
+
     def insert_hierarchy_paths(
         self, ancestor_ids: list[uuid.UUID], descendant_ids: list[uuid.UUID]
     ) -> None:

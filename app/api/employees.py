@@ -125,6 +125,59 @@ def create_employee(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
+@router.delete(
+    "/{user_id}",
+    name="Delete Employee",
+    operation_id="deleteEmployee",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_employee(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    employee_service: EmployeeServiceDep
+):
+    """
+    Delete an employee and heal the hierarchy.
+    
+    ⚠️ SUPERUSER ONLY - This removes the employee record but keeps the user account.
+    
+    When an employee is deleted, the hierarchy is automatically healed:
+    - Direct subordinates are reassigned to the deleted employee's supervisor
+    - If no supervisor exists, subordinates become top-level employees
+    - All hierarchy paths are properly updated
+    
+    Example:
+        A -> B -> C
+        Delete B
+        Result: A -> C
+    
+    Args:
+        user_id: The user ID of the employee to delete
+        
+    Raises:
+        403: If user is not a superuser
+        404: If employee not found
+    """
+    if not user.is_superuser:
+        raise UserNotAuthorizedError()
+    
+    try:
+        employee = employee_service.get_employee_by_user_id(user_id)
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee not found for user {user_id}",
+            )
+        
+        employee_service.delete_employee_and_heal_hierarchy(employee)
+        
+    except UserNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found"
+        )
+
+
 @router.post(
     "/__rebuild_hierarchy",
     name="Rebuild Employee Hierarchy",

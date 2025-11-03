@@ -19,15 +19,15 @@ class TimeEntryService:
     def create_time_entry(
         self, actor: User, time_entry_in: TimeEntryCreate
     ) -> TimeEntry:
-        if actor.employee is None:  # We are not employee
-            if not actor.is_superuser:  # We are also not superuser
+        if actor.employee is None:
+            if not actor.is_superuser:
                 raise UserNotAuthorizedError()
-        else:  # We are employee
-            if actor.is_superuser:  # We are superuser
+        else:
+            if actor.is_superuser:
                 pass
-            elif actor.id == time_entry_in.user_id:  # Ids match
+            elif actor.id == time_entry_in.user_id:
                 pass
-            else:  # Ids don't match and we are not superuser
+            else:
                 raise UserNotAuthorizedError()
 
         target_employee = self.employee_repo.get_employee_by_user_id(
@@ -49,8 +49,8 @@ class TimeEntryService:
     def update_time_entry(
         self, actor: User, time_entry_update: TimeEntryUpdate
     ) -> TimeEntry:
-        if actor.employee is None:  # We are not employee
-            if not actor.is_superuser:  # We are also not superuser
+        if actor.employee is None:
+            if not actor.is_superuser:
                 raise UserNotAuthorizedError()
 
         time_entry = self.time_entry_repo.get_time_entry_by_id(time_entry_update.id)
@@ -58,14 +58,12 @@ class TimeEntryService:
         if time_entry is None:
             raise ResourceNotFoundError()
 
-        if actor.is_superuser:  # Okay if superuser
+        if actor.is_superuser:
             pass
-        elif actor.employee:  # Employee
-            if (
-                actor.employee.user_id != time_entry.user_id
-            ):  # Employee doesn't match time entry
+        elif actor.employee:
+            if actor.employee.user_id != time_entry.user_id:
                 raise UserNotAuthorizedError()
-        else:  # Not superuser and not employee
+        else:
             raise UserNotAuthorizedError()
 
         # TODO: check if the updated time entry is allowed to be made
@@ -80,8 +78,8 @@ class TimeEntryService:
 
     def delete_time_entry(self, actor: User, time_entry_delete: TimeEntryDelete):
         # TODO: checks
-        if actor.employee is None:  # We are not employee
-            if not actor.is_superuser:  # We are also not superuser
+        if actor.employee is None:
+            if not actor.is_superuser:
                 raise UserNotAuthorizedError()
 
         time_entry = self.time_entry_repo.get_time_entry_by_id(time_entry_delete.id)
@@ -89,14 +87,12 @@ class TimeEntryService:
         if time_entry is None:
             raise ResourceNotFoundError()
 
-        if actor.is_superuser:  # Okay if superuser
+        if actor.is_superuser:
             pass
-        elif actor.employee:  # Employee
-            if (
-                actor.employee.user_id != time_entry.user_id
-            ):  # Employee doesn't match time entry
+        elif actor.employee:
+            if actor.employee.user_id != time_entry.user_id:
                 raise UserNotAuthorizedError()
-        else:  # Not superuser and not employee
+        else:
             raise UserNotAuthorizedError()
 
         # TODO: check if we are allowed to delete the time entry

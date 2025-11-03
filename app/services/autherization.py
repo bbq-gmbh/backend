@@ -20,7 +20,6 @@ class AuthorizationService:
         if actor.id == target.id:
             return True
 
-        # Check hierarchy if both have employee records
         if actor.employee and target.employee:
             return EmployeeService.safe_is_higher(
                 actor.employee, target.employee, same=True
