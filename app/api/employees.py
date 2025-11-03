@@ -1,6 +1,5 @@
 import uuid
 from fastapi import APIRouter, HTTPException, Query, status
-from typing import Optional
 
 from app.api.dependencies import CurrentUserDep, EmployeeServiceDep
 from app.core.exceptions import (
@@ -38,28 +37,15 @@ def get_my_employee(user: CurrentUserDep):
 def get_employee_hierarchy(
     user: CurrentUserDep,
     employee_service: EmployeeServiceDep,
-    user_id: Optional[uuid.UUID] = Query(None, description="User ID to get hierarchy for. If not provided, returns current user's hierarchy.")
+    user_id: uuid.UUID
 ):
-    """
-    Get hierarchy information for an employee.
-    
-    Returns the employee's position in the hierarchy including:
-    - Employee information with depth
-    - List of all supervisors (direct and indirect)
-    - List of all subordinates (direct and indirect)
-    
-    Superusers can query any employee's hierarchy. 
-    Non-superusers can only query their own hierarchy or subordinates.
-    """
-    # Determine which employee to query
-    target_user_id = user_id if user_id else user.id
-    
+    """Get hierarchy information for an employee including supervisors and subordinates."""
     # Get the target employee
-    target_employee = employee_service.get_employee_by_user_id(target_user_id)
+    target_employee = employee_service.get_employee_by_user_id(user_id)
     if not target_employee:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Employee not found for user {target_user_id}",
+            detail=f"Employee not found for user {user_id}",
         )
     
     # Authorization check
@@ -73,7 +59,7 @@ def get_employee_hierarchy(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Not authorized to view this employee's hierarchy",
                 )
-        elif target_user_id != user.id:
+        elif user_id != user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this employee's hierarchy",
@@ -136,28 +122,7 @@ def delete_employee(
     user_id: uuid.UUID,
     employee_service: EmployeeServiceDep
 ):
-    """
-    Delete an employee and heal the hierarchy.
-    
-    ⚠️ SUPERUSER ONLY - This removes the employee record but keeps the user account.
-    
-    When an employee is deleted, the hierarchy is automatically healed:
-    - Direct subordinates are reassigned to the deleted employee's supervisor
-    - If no supervisor exists, subordinates become top-level employees
-    - All hierarchy paths are properly updated
-    
-    Example:
-        A -> B -> C
-        Delete B
-        Result: A -> C
-    
-    Args:
-        user_id: The user ID of the employee to delete
-        
-    Raises:
-        403: If user is not a superuser
-        404: If employee not found
-    """
+    """Delete an employee and heal the hierarchy (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
     
@@ -190,26 +155,7 @@ def rebuild_employee_hierarchy(
     employee_service: EmployeeServiceDep,
     force: bool = Query(False, description="Force rebuild without pre-validation checks"),
 ):
-    """
-    Rebuild the entire employee hierarchy table.
-    
-    ⚠️ SUPERUSER ONLY - This is a critical maintenance operation.
-    
-    This endpoint:
-    1. Clears the entire employee_hierarchy closure table
-    2. Rebuilds all hierarchy relationships from supervisor_id references
-    3. Validates the rebuilt hierarchy
-    4. Returns detailed statistics and validation results
-    
-    Args:
-        force: If true, skip pre-validation checks and force rebuild
-        
-    Returns:
-        Rebuild report with statistics and validation results
-        
-    Raises:
-        403: If user is not a superuser
-    """
+    """Rebuild the entire employee hierarchy table (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
     
