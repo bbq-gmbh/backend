@@ -3,7 +3,6 @@ from typing import Optional
 
 from app.config.settings import Settings
 from app.core.exceptions import (
-    DomainError,
     EmployeeAlreadyExistsError,
     HierarchyCycleError,
     HierarchyDepthExceededError,
@@ -278,11 +277,9 @@ class EmployeeService:
         Returns:
             True if employee is a subordinate of other (or same when same=True), False otherwise.
         """
-        # Check if they are the same employee
         if employee.user_id == other.user_id:
             return same
 
-        # Check if employee is a subordinate of other (going up from employee)
         current = employee
         for _ in range(Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS):
             if current.supervisor_id is None:
@@ -294,25 +291,3 @@ class EmployeeService:
                 break
 
         return False
-
-    def remove_supervisor(self, target: Employee, *, force: bool = False) -> None:
-        """DEPRECATED: Use remove_supervisor_from_employee() instead.
-
-        This method will be removed in a future version.
-        """
-        if not target.supervisor and not force:
-            return
-
-        target.supervisor = None
-        self.hierarchy_repo.remove_supervisor(target)
-
-    def assign_supervisor(self, target: Employee, supervisor: Employee) -> None:
-        """DEPRECATED: Use assign_supervisor_to_employee() instead.
-
-        This method will be removed in a future version.
-        """
-        if target.supervisor:
-            raise DomainError("Cannot assign supervisor because it was not None")
-
-        target.supervisor = supervisor
-        self.hierarchy_repo.assign_supervisor(target, supervisor)
