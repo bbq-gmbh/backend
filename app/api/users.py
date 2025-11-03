@@ -88,6 +88,9 @@ def get_username_exists(user: CurrentUserDep, user_repo: UserRepositoryDep, name
     operation_id="patchUser",
 )
 def patch_user(
-    user: CurrentUserDep, user_service: UserServiceDep, id: uuid.UUID, user_patch: UserPatch
+    user: CurrentUserDep,
+    user_service: UserServiceDep,
+    id: uuid.UUID,
+    user_patch: UserPatch,
 ):
     return user_service.patch_user(user, id, user_patch=user_patch)

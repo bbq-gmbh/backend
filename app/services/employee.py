@@ -2,10 +2,18 @@ import uuid
 from typing import Optional
 
 from app.config.settings import Settings
-from app.core.exceptions import DomainError, EmployeeAlreadyExistsError, UserNotFoundError
+from app.core.exceptions import (
+    DomainError,
+    EmployeeAlreadyExistsError,
+    HierarchyCycleError,
+    HierarchyDepthExceededError,
+    InvalidSupervisorAssignmentError,
+    UserNotFoundError,
+)
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
 from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+from app.repositories.user import UserRepository
 from app.schemas.employee import EmployeeCreate
 
 
@@ -14,11 +22,12 @@ class EmployeeService:
         self,
         employee_repo: EmployeeRepository,
         employee_hierarchy_repo: EmployeeHierarchyRepository,
+        user_repo: UserRepository,
     ):
         self.employee_repo = employee_repo
-        self.user_repo = employee_repo.user_repo
-        self.employee_hierarchy_repo = employee_hierarchy_repo
-        self.session = self.user_repo.session
+        self.hierarchy_repo = employee_hierarchy_repo
+        self.user_repo = user_repo
+        self.session = user_repo.session
 
     def create_employee_for_user(self, employee_in: EmployeeCreate) -> Employee:
         user = self.user_repo.get_user_by_id(employee_in.user_id)
@@ -28,13 +37,140 @@ class EmployeeService:
         if user.employee:
             raise EmployeeAlreadyExistsError()
 
-        user.employee = self.employee_repo.create_employee(employee_in)
-        self.session.add(user.employee)
-        self.session.add(user)
+        employee = Employee(
+            user_id=employee_in.user_id,
+            first_name=employee_in.first_name,
+            last_name=employee_in.last_name,
+        )
+        user.employee = employee
+
+        self.hierarchy_repo.add_self_reference(employee)
 
         self.session.commit()
-        self.session.refresh(user.employee)
-        return user.employee
+        self.session.refresh(employee)
+        return employee
+
+    def assign_supervisor_to_employee(
+        self, target: Employee, supervisor: Employee
+    ) -> None:
+        self._validate_supervisor_assignment(target, supervisor)
+
+        if target.supervisor_id:
+            self.remove_supervisor_from_employee(target)
+
+        target.supervisor_id = supervisor.user_id
+        target.supervisor = supervisor
+
+        ancestor_ids = self.hierarchy_repo.get_ancestor_ids(
+            supervisor.user_id, include_self=True
+        )
+        descendant_ids = self.hierarchy_repo.get_descendant_ids(
+            target.user_id, include_self=True
+        )
+
+        self.hierarchy_repo.insert_hierarchy_paths(ancestor_ids, descendant_ids)
+
+        self.session.commit()
+
+    def remove_supervisor_from_employee(self, target: Employee) -> None:
+        if not target.supervisor_id:
+            return
+
+        ancestor_ids = self.hierarchy_repo.get_ancestor_ids(target.user_id)
+        descendant_ids = self.hierarchy_repo.get_descendant_ids(
+            target.user_id, include_self=True
+        )
+
+        self.hierarchy_repo.delete_hierarchy_paths(ancestor_ids, descendant_ids)
+
+        target.supervisor_id = None
+        target.supervisor = None
+
+        self.session.commit()
+
+    def _validate_supervisor_assignment(
+        self, target: Employee, supervisor: Employee
+    ) -> None:
+        if target.user_id == supervisor.user_id:
+            raise InvalidSupervisorAssignmentError(
+                "Employee cannot be their own supervisor"
+            )
+
+        if self.would_create_cycle(target, supervisor):
+            raise HierarchyCycleError(
+                f"Assigning {supervisor.user_id} as supervisor of "
+                f"{target.user_id} would create a cycle"
+            )
+
+        supervisor_depth = self._get_depth(supervisor)
+        target_subtree_depth = self._get_subtree_depth(target)
+
+        max_depth = Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS
+        if supervisor_depth + target_subtree_depth + 1 > max_depth:
+            raise HierarchyDepthExceededError(
+                f"Assignment would exceed maximum hierarchy depth of {max_depth}"
+            )
+
+    def would_create_cycle(self, target: Employee, supervisor: Employee) -> bool:
+        subordinate_ids = self.hierarchy_repo.get_descendant_ids(target.user_id)
+        return supervisor.user_id in subordinate_ids
+
+    def _get_depth(self, employee: Employee) -> int:
+        ancestor_ids = self.hierarchy_repo.get_ancestor_ids(
+            employee.user_id, include_self=False
+        )
+        return len(ancestor_ids)
+
+    def _get_subtree_depth(self, employee: Employee) -> int:
+        descendants = self.hierarchy_repo.get_subordinates(
+            employee.user_id, include_self=True
+        )
+        if not descendants:
+            return 0
+
+        max_depth = 0
+        employee_depth = self._get_depth(employee)
+
+        for desc in descendants:
+            depth = self._get_depth(desc) - employee_depth
+            max_depth = max(max_depth, depth)
+
+        return max_depth
+
+    def is_supervisor_of(
+        self,
+        potential_supervisor: Employee,
+        potential_subordinate: Employee,
+        include_self: bool = False,
+    ) -> bool:
+        if (
+            include_self
+            and potential_supervisor.user_id == potential_subordinate.user_id
+        ):
+            return True
+
+        ancestor_ids = self.hierarchy_repo.get_ancestor_ids(
+            potential_subordinate.user_id, include_self=False
+        )
+        return potential_supervisor.user_id in ancestor_ids
+
+    def get_hierarchy_level_difference(
+        self, employee1: Employee, employee2: Employee
+    ) -> Optional[int]:
+        if employee1.user_id == employee2.user_id:
+            return 0
+
+        if self.is_supervisor_of(employee1, employee2):
+            depth1 = self._get_depth(employee1)
+            depth2 = self._get_depth(employee2)
+            return depth2 - depth1
+
+        if self.is_supervisor_of(employee2, employee1):
+            depth1 = self._get_depth(employee1)
+            depth2 = self._get_depth(employee2)
+            return depth2 - depth1
+
+        return None
 
     def get_employee_by_user_id(self, user_id: uuid.UUID) -> Optional[Employee]:
         user = self.user_repo.get_user_by_id(user_id)
@@ -160,17 +296,23 @@ class EmployeeService:
         return False
 
     def remove_supervisor(self, target: Employee, *, force: bool = False) -> None:
+        """DEPRECATED: Use remove_supervisor_from_employee() instead.
+
+        This method will be removed in a future version.
+        """
         if not target.supervisor and not force:
             return
 
         target.supervisor = None
-        self.employee_hierarchy_repo.remove_supervisor(target)
+        self.hierarchy_repo.remove_supervisor(target)
 
     def assign_supervisor(self, target: Employee, supervisor: Employee) -> None:
+        """DEPRECATED: Use assign_supervisor_to_employee() instead.
+
+        This method will be removed in a future version.
+        """
         if target.supervisor:
             raise DomainError("Cannot assign supervisor because it was not None")
-        
+
         target.supervisor = supervisor
-        self.employee_hierarchy_repo.assign_supervisor(target, supervisor)
-
-
+        self.hierarchy_repo.assign_supervisor(target, supervisor)

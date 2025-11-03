@@ -50,9 +50,9 @@ UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 # Employee
 
 
-def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
-    """Provides an employee repository dependency."""
-    return EmployeeRepository(user_repo=user_repo)
+def get_employee_repository(session: DatabaseSession) -> EmployeeRepository:
+    """Provides an employee repository dependency (refactored to take session)."""
+    return EmployeeRepository(session=session)
 
 
 EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
@@ -61,7 +61,7 @@ EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repos
 def get_employee_hierarchy_repository(
     session: DatabaseSession,
 ) -> EmployeeHierarchyRepository:
-    """Provides an employee repository dependency."""
+    """Provides an employee hierarchy repository dependency."""
     return EmployeeHierarchyRepository(session=session)
 
 
@@ -73,10 +73,13 @@ EmployeeHierarchyRepositoryDep = Annotated[
 def get_employee_service(
     employee_repo: EmployeeRepositoryDep,
     employee_hierarchy_repo: EmployeeHierarchyRepositoryDep,
+    user_repo: UserRepositoryDep,
 ) -> EmployeeService:
-    """Provides an employee service dependency."""
+    """Provides an employee service dependency (refactored with explicit dependencies)."""
     return EmployeeService(
-        employee_repo=employee_repo, employee_hierarchy_repo=employee_hierarchy_repo
+        employee_repo=employee_repo,
+        employee_hierarchy_repo=employee_hierarchy_repo,
+        user_repo=user_repo,
     )
 
 

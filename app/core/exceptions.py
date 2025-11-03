@@ -118,3 +118,38 @@ class EmployeeAlreadyExistsError(ResourceConflictError):
 # 422 Unprocessable Entity - Validation errors
 class UnprocessableEntityError(DomainError):
     """Base class for unprocessable entity errors."""
+
+
+# Hierarchy-specific errors
+class HierarchyError(DomainError):
+    """Base exception for hierarchy-related errors."""
+
+
+class HierarchyCycleError(HierarchyError):
+    """Raised when an operation would create a cycle in the hierarchy."""
+
+    def __init__(
+        self, message: str = "Operation would create a cycle in the hierarchy"
+    ):
+        super().__init__(message)
+
+
+class HierarchyDepthExceededError(HierarchyError):
+    """Raised when an operation would exceed the maximum hierarchy depth."""
+
+    def __init__(self, message: str = "Operation would exceed maximum hierarchy depth"):
+        super().__init__(message)
+
+
+class HierarchyCorruptionError(HierarchyError):
+    """Raised when hierarchy data is corrupted or inconsistent."""
+
+    def __init__(self, message: str = "Hierarchy data is corrupted"):
+        super().__init__(message)
+
+
+class InvalidSupervisorAssignmentError(HierarchyError):
+    """Raised when a supervisor assignment is invalid."""
+
+    def __init__(self, message: str = "Invalid supervisor assignment"):
+        super().__init__(message)

@@ -66,7 +66,7 @@ class UserService:
     def delete_user(self, actor: User, user: User):
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
-        
+
         if actor.id == user.id:
             raise DomainError()
 
