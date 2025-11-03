@@ -100,9 +100,6 @@ class EmployeeHierarchyRepository:
         return list(result.all())
 
     def remove_supervisor(self, target: Employee):
-        if not target.supervisor:
-            raise ValueError("target must have an assigned supervisor")
-
         ids_upper = self.get_higher_user_ids(target)
         ids_lower = self.get_lower_user_ids(target, same=True)
 
@@ -115,9 +112,6 @@ class EmployeeHierarchyRepository:
         target.supervisor = None
 
     def assign_supervisor(self, target: Employee, supervisor: Employee):
-        if target.supervisor:
-            raise ValueError("target must not have an assigned supervisor")
-
         exec_super = (
             select(EmployeeHierarchy.ancestor_id)
             .where(EmployeeHierarchy.descendant_id == supervisor.user_id)

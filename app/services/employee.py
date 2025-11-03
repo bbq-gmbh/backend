@@ -2,22 +2,28 @@ import uuid
 from typing import Optional
 
 from app.config.settings import Settings
-from app.core.exceptions import EmployeeAlreadyExistsError, UserNotFoundError
+from app.core.exceptions import DomainError, EmployeeAlreadyExistsError, UserNotFoundError
 from app.models.employee import Employee
 from app.repositories.employee import EmployeeRepository
+from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 from app.schemas.employee import EmployeeCreate
 
 
 class EmployeeService:
-    def __init__(self, employee_repo: EmployeeRepository):
+    def __init__(
+        self,
+        employee_repo: EmployeeRepository,
+        employee_hierarchy_repo: EmployeeHierarchyRepository,
+    ):
         self.employee_repo = employee_repo
         self.user_repo = employee_repo.user_repo
+        self.employee_hierarchy_repo = employee_hierarchy_repo
         self.session = self.user_repo.session
 
     def create_employee_for_user(self, employee_in: EmployeeCreate) -> Employee:
         user = self.user_repo.get_user_by_id(employee_in.user_id)
         if not user:
-            raise UserNotFoundError(user_id=employee_in.user_id)  # type: ignore TODO
+            raise UserNotFoundError(user_id=employee_in.user_id)
 
         if user.employee:
             raise EmployeeAlreadyExistsError()
@@ -31,7 +37,7 @@ class EmployeeService:
         return user.employee
 
     def get_employee_by_user_id(self, user_id: uuid.UUID) -> Optional[Employee]:
-        user = self.user_repo.get_user_by_id(user_id)  # type: ignore TODO
+        user = self.user_repo.get_user_by_id(user_id)
         if not user:
             raise UserNotFoundError(user_id=user_id)
         return user.employee
@@ -152,3 +158,19 @@ class EmployeeService:
                 break
 
         return False
+
+    def remove_supervisor(self, target: Employee, *, force: bool = False) -> None:
+        if not target.supervisor and not force:
+            return
+
+        target.supervisor = None
+        self.employee_hierarchy_repo.remove_supervisor(target)
+
+    def assign_supervisor(self, target: Employee, supervisor: Employee) -> None:
+        if target.supervisor:
+            raise DomainError("Cannot assign supervisor because it was not None")
+        
+        target.supervisor = supervisor
+        self.employee_hierarchy_repo.assign_supervisor(target, supervisor)
+
+

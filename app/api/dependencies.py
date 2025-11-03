@@ -12,6 +12,7 @@ from app.core.exceptions import (
 )
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
+from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 from app.repositories.server_store import ServerStoreRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData, TokenKind
@@ -57,9 +58,26 @@ def get_employee_repository(user_repo: UserRepositoryDep) -> EmployeeRepository:
 EmployeeRepositoryDep = Annotated[EmployeeRepository, Depends(get_employee_repository)]
 
 
-def get_employee_service(employee_repo: EmployeeRepositoryDep) -> EmployeeService:
+def get_employee_hierarchy_repository(
+    session: DatabaseSession,
+) -> EmployeeHierarchyRepository:
+    """Provides an employee repository dependency."""
+    return EmployeeHierarchyRepository(session=session)
+
+
+EmployeeHierarchyRepositoryDep = Annotated[
+    EmployeeHierarchyRepository, Depends(get_employee_hierarchy_repository)
+]
+
+
+def get_employee_service(
+    employee_repo: EmployeeRepositoryDep,
+    employee_hierarchy_repo: EmployeeHierarchyRepositoryDep,
+) -> EmployeeService:
     """Provides an employee service dependency."""
-    return EmployeeService(employee_repo=employee_repo)
+    return EmployeeService(
+        employee_repo=employee_repo, employee_hierarchy_repo=employee_hierarchy_repo
+    )
 
 
 EmployeeServiceDep = Annotated[EmployeeService, Depends(get_employee_service)]
