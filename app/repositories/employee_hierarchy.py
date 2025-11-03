@@ -13,10 +13,6 @@ class EmployeeHierarchyRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    # ========================================================================
-    # NEW METHODS - Clean, single-responsibility data access
-    # ========================================================================
-
     def add_self_reference(self, employee: Employee) -> None:
         """Add self-reference entry (depth=0) for an employee.
 
