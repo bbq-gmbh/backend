@@ -6,6 +6,8 @@ from app.models.employee import Employee
 from app.models.user import User
 
 from app.repositories.user import UserRepository
+from app.repositories.employee import EmployeeRepository
+from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 from app.core.exceptions import (
     DomainError,
     EmployeeNotFoundError,
@@ -20,8 +22,16 @@ from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly, U
 
 
 class UserService:
-    def __init__(self, *, user_repo: UserRepository):
+    def __init__(
+        self, 
+        *, 
+        user_repo: UserRepository,
+        employee_repo: Optional[EmployeeRepository] = None,
+        hierarchy_repo: Optional[EmployeeHierarchyRepository] = None
+    ):
         self.user_repo = user_repo
+        self.employee_repo = employee_repo
+        self.hierarchy_repo = hierarchy_repo
         self.session = user_repo.session
 
     @staticmethod
@@ -66,14 +76,23 @@ class UserService:
     def delete_user(self, actor: User, user: User):
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
-        
+
         if actor.id == user.id:
             raise DomainError()
 
-        self.user_repo.delete_user(user)
+        if user.employee and self.employee_repo and self.hierarchy_repo:
+            from app.services.employee import EmployeeService
+            
+            employee_service = EmployeeService(
+                employee_repo=self.employee_repo,
+                employee_hierarchy_repo=self.hierarchy_repo,
+                user_repo=self.user_repo
+            )
+            employee_service.delete_employee_and_heal_hierarchy(user.employee)
+            user.employee = None
 
+        self.user_repo.delete_user(user)
         self.session.commit()
-        self.session.refresh(user)
 
     def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
         user = self.user_repo.get_user_by_id(user_id)
@@ -247,7 +266,44 @@ class UserService:
                 user.employee.first_name = user_patch.new_employee.new_first_name
             if user_patch.new_employee.new_last_name:
                 user.employee.last_name = user_patch.new_employee.new_last_name
+            
+            if 'new_supervisor_id' in user_patch.new_employee.model_fields_set:
+                self._handle_supervisor_change(
+                    user.employee, 
+                    user_patch.new_employee.new_supervisor_id
+                )
 
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
+
+    def _handle_supervisor_change(self, employee: Employee, new_supervisor_id: Optional[uuid.UUID]):
+        """Handle changing an employee's supervisor with hierarchy updates.
+        
+        Args:
+            employee: The employee whose supervisor is being changed
+            new_supervisor_id: The new supervisor's user_id, or None to remove supervisor
+        """
+        if not self.employee_repo or not self.hierarchy_repo:
+            raise ValidationError("Employee repository and hierarchy repository required for supervisor changes")
+        
+        from app.services.employee import EmployeeService
+        
+        employee_service = EmployeeService(
+            employee_repo=self.employee_repo,
+            employee_hierarchy_repo=self.hierarchy_repo,
+            user_repo=self.user_repo
+        )
+        
+        if new_supervisor_id:
+            new_supervisor = self.employee_repo.get_employee_by_user_id(new_supervisor_id)
+            if not new_supervisor:
+                raise EmployeeNotFoundError(user_id=new_supervisor_id)
+            
+            if employee.supervisor_id:
+                employee_service.remove_supervisor_from_employee(employee)
+            
+            employee_service.assign_supervisor_to_employee(employee, new_supervisor)
+        else:
+            if employee.supervisor_id:
+                employee_service.remove_supervisor_from_employee(employee)

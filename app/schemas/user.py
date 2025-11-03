@@ -22,12 +22,13 @@ class UserEmployeeOnly(BaseModel):
 
 
 class UserInfo(UserOnly):
-    employee: Optional[UserEmployeeOnly]
+    employee: Optional[UserEmployeeOnly] = None
 
 
 class UserEmployeePatch(BaseModel):
     new_first_name: Optional[str] = None
     new_last_name: Optional[str] = None
+    new_supervisor_id: Optional[uuid.UUID] = None
 
 
 class UserPatch(BaseModel):
