@@ -13,8 +13,7 @@ class TimeEntryService:
     def __init__(self, *, time_entry_repo: TimeEntryRepository):
         self.time_entry_repo = time_entry_repo
         self.employee_repo = time_entry_repo.employee_repo
-        self.user_repo = self.employee_repo.user_repo
-        self.session = self.user_repo.session
+        self.session = self.employee_repo.session
 
     def create_time_entry(
         self, actor: User, time_entry_in: TimeEntryCreate
