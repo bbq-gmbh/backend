@@ -42,15 +42,17 @@ class TestListUsers:
 
     def test_list_users_success(self, client, authenticated_client):
         """Test successful user listing."""
-        response = authenticated_client.get("/users")
+        response = authenticated_client.get("/users?page=0&page_size=10")
 
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
+        assert isinstance(data, dict)
+        assert "page" in data
+        assert "total" in data
+        assert len(data["page"]) >= 1
 
         # Verify user data structure
-        user_data = data[0]
+        user_data = data["page"][0]
         assert "id" in user_data
         assert "username" in user_data
         assert "password" not in user_data

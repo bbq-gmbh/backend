@@ -108,7 +108,7 @@ class TestUserListing:
 
     def test_get_all_users(self, user_service, created_user):
         """Test listing all users."""
-        users = user_service.get_all_users()
+        users = user_service.get_users(page=0, page_size=10)
 
         assert len(users) >= 1
         assert any(u.username == "testuser" for u in users)
