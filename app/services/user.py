@@ -155,17 +155,23 @@ class UserService:
         return self.user_repo.get_users(page, page_size)
 
     def get_user_employee_pairs(
-        self, page: int, page_size: int
+        self, page: int, page_size: int, is_employee: Optional[bool] = None
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
         if page_size <= 0:
             raise ValidationError("Page Size must be greater than 0")
         if page < 0:
             raise ValidationError("Page must be non negative")
 
-        return PagedResult(
-            page=self.user_repo.get_user_employee_pairs(page, page_size),
-            total=self.user_repo.get_user_employee_pairs_count(),
-        )
+        if is_employee is None:
+            return PagedResult(
+                page=self.user_repo.get_user_employee_pairs(page, page_size),
+                total=self.user_repo.get_user_employee_pairs_count(),
+            )
+        else:
+            users = self.user_repo.get_users_filtered(page, page_size, is_employee)
+            total = self.user_repo.get_users_filtered_count(is_employee)
+            pairs = [(user, user.employee) for user in users]
+            return PagedResult(page=pairs, total=total)
 
     def get_lower_user_employee_pairs_paged(
         self, employee: Employee, page: int, page_size: int
@@ -185,10 +191,10 @@ class UserService:
         )
 
     def get_visible_user_employee_pairs(
-        self, actor: User, page: int, page_size: int
+        self, actor: User, page: int, page_size: int, is_employee: Optional[bool] = None
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
         if actor.is_superuser:
-            return self.get_user_employee_pairs(page, page_size)
+            return self.get_user_employee_pairs(page, page_size, is_employee)
 
         if actor.employee:
             return PagedResult(
@@ -208,22 +214,14 @@ class UserService:
         return PagedResult(page=[(actor, actor.employee)], total=1)
 
     def search_users_by_username(
-        self, actor: User, username_query: str, page: int, page_size: int
+        self,
+        actor: User,
+        username_query: str,
+        page: int,
+        page_size: int,
+        is_employee: Optional[bool] = None,
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
-        """Search users by username with authorization.
-
-        Superusers can search all users. Regular users can only search users
-        they are authorized to see (same or lower in hierarchy).
-
-        Args:
-            actor: The user performing the search
-            username_query: The username search query string
-            page: Page number (0-indexed)
-            page_size: Number of results per page
-
-        Returns:
-            PagedResult containing matching users and total count
-        """
+        """Search users by username with optional employee status filter."""
         if page_size <= 0:
             raise ValidationError("Page Size must be greater than 0")
         if page < 0:
@@ -231,17 +229,23 @@ class UserService:
         if not username_query:
             raise ValidationError("Search query cannot be empty")
 
-        # For now, superusers can search all users
-        # Regular users would need hierarchy-aware search (future enhancement)
         if not actor.is_superuser:
             raise UserNotAuthorizedError()
 
-        users = self.user_repo.search_users_by_username(username_query, page, page_size)
-        total = self.user_repo.search_users_by_username_count(username_query)
+        if is_employee is None:
+            users = self.user_repo.search_users_by_username(
+                username_query, page, page_size
+            )
+            total = self.user_repo.search_users_by_username_count(username_query)
+        else:
+            users = self.user_repo.search_users_by_username_filtered(
+                username_query, page, page_size, is_employee
+            )
+            total = self.user_repo.search_users_by_username_filtered_count(
+                username_query, is_employee
+            )
 
-        # Convert to user-employee pairs
         pairs = [(user, user.employee) for user in users]
-
         return PagedResult(page=pairs, total=total)
 
     @staticmethod

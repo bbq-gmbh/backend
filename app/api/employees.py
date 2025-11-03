@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
@@ -7,6 +8,7 @@ from app.core.exceptions import (
     UserNotAuthorizedError,
     UserNotFoundError,
 )
+from app.models.employee import Employee
 from app.schemas.employee import (
     EmployeeCreate,
     HierarchyResponse,
@@ -73,6 +75,7 @@ def get_employee_hierarchy(
     name="Get Employee By User ID",
     operation_id="getEmployeeByUserId",
     status_code=status.HTTP_200_OK,
+    response_model=Optional[Employee],
 )
 def get_employee_by_user_id(
     _: CurrentUserDep, user_id: uuid.UUID, employee_service: EmployeeServiceDep

@@ -31,11 +31,12 @@ def list_users(
     user_service: UserServiceDep,
     page: Annotated[int, Query(ge=0)],
     page_size: Annotated[int, Query(ge=1, le=200)],
+    is_employee: Annotated[bool | None, Query()] = None,
 ) -> PagedResult[list[UserInfo]]:
-    """
-    Get a list of all users. Requires authentication.
-    """
-    result = user_service.get_visible_user_employee_pairs(user, page, page_size)
+    """Get a list of all users. Optional filter by employee status."""
+    result = user_service.get_visible_user_employee_pairs(
+        user, page, page_size, is_employee
+    )
     return PagedResult(
         page=[
             UserService._user_employee_pair_to_user_info(u, e) for u, e in result.page
@@ -51,13 +52,12 @@ def search_users(
     query: Annotated[str, Query(min_length=1)],
     page: Annotated[int, Query(ge=0)],
     page_size: Annotated[int, Query(ge=1, le=200)],
+    is_employee: Annotated[bool | None, Query()] = None,
 ) -> PagedResult[list[UserInfo]]:
-    """
-    Search users by username with paging. Requires authentication and superuser privileges.
-
-    The search is case-insensitive and matches partial usernames.
-    """
-    result = user_service.search_users_by_username(user, query, page, page_size)
+    """Search users by username. Optional filter by employee status. Superuser only."""
+    result = user_service.search_users_by_username(
+        user, query, page, page_size, is_employee
+    )
     return PagedResult(
         page=[
             UserService._user_employee_pair_to_user_info(u, e) for u, e in result.page
