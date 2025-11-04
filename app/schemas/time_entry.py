@@ -32,10 +32,5 @@ class TimeEntryCreate(BaseModel):
     ignore: Optional[list[TimeEntryViolation]] = None
 
 
-class TimeEntryUpdate(BaseModel):
-    id: int
-    date_time: datetime
-
-
 class TimeEntryDelete(BaseModel):
     id: int

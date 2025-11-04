@@ -23,7 +23,7 @@ from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.server_store import ServerStoreRepository
 from app.repositories.time_entry import TimeEntryRepository
-from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryUpdate
+from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete
 
 from .rules import TimeEntryRuleService
 
@@ -106,7 +106,7 @@ class TimeEntryService:
             if employee_underage and not is_in_work_hours_underage(date_time.time()):
                 raise DomainError("Time entry is in rest period (underage rules)")
 
-        if time_entry_in.entry_type == TimeEntryType.Arrival:
+        if not force and time_entry_in.entry_type == TimeEntryType.Arrival:
             departure_entry_before = (
                 self.time_entry_repo.get_last_departure_entry_for_day(
                     (day - timedelta(days=1))
@@ -126,7 +126,7 @@ class TimeEntryService:
                         "Arrival entry violates rest hours (underage rules)"
                     )
 
-        if time_entry_in.entry_type == TimeEntryType.Departure:
+        if not force and time_entry_in.entry_type == TimeEntryType.Departure:
             arrival_entry_after = self.time_entry_repo.get_first_arrival_entry_for_day(
                 (day + timedelta(days=1))
             )
@@ -143,17 +143,11 @@ class TimeEntryService:
                         "Departure entry violates rest hours (underage rules)"
                     )
 
-        # TODO
+        time_entry = self.time_entry_repo.create_time_entry(actor, time_entry_in)
+        self.session.commit()
+        self.session.refresh(time_entry)
 
-        return None  # type: ignore
-
-    def update_time_entry(
-        self, actor: User, time_entry_update: TimeEntryUpdate, *, force: bool = False
-    ) -> TimeEntry:
-        if not actor.is_superuser and force:
-            raise UserNotAuthorizedError()
-
-        return None  # type: ignore
+        return time_entry
 
     def delete_time_entry(
         self, actor: User, time_entry_delete: TimeEntryDelete, *, force: bool = False
