@@ -24,7 +24,7 @@ class AbsenceEntry(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="employees.user_id", index=True)
     entry_type: AbsenceEntryType
     
-    date_start: date = Field(index=True)
+    date_begin: date = Field(index=True)
     date_end: date = Field(index=True)
 
     created_by: uuid.UUID = Field(foreign_key="users.id", index=True)

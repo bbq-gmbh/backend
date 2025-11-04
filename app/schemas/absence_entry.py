@@ -1,6 +1,6 @@
-from datetime import date
-from typing import Optional
 import uuid
+
+from datetime import date
 
 from pydantic import BaseModel
 
@@ -11,5 +11,5 @@ class AbsenceEntryCreate(BaseModel):
     user_id: uuid.UUID
 
     entry_type: AbsenceEntryType
-    date_start: date
+    date_begin: date
     date_end: date
