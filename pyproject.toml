@@ -6,11 +6,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bcrypt>=5.0.0",
-    "fastapi[standard]>=0.119.1",
-    "holidays>=0.83",
+    "fastapi[standard]>=0.121.0",
+    "holidays>=0.84",
     "psycopg2-binary>=2.9.11",
     "pyjwt>=2.10.1",
-    "python-dotenv>=1.1.1",
+    "python-dotenv>=1.2.1",
     "sqlmodel>=0.0.27",
 ]
 
