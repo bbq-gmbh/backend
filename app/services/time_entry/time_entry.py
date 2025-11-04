@@ -5,6 +5,7 @@ from app.core.exceptions import (
 from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
+from app.repositories.server_store import ServerStoreRepository
 from app.repositories.time_entry import TimeEntryRepository
 from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryUpdate
 
@@ -12,9 +13,16 @@ from .rules import TimeEntryRuleService
 
 
 class TimeEntryService:
-    def __init__(self, *, time_entry_repo: TimeEntryRepository, absence_entry_repo: AbsenceEntryRepository):
+    def __init__(
+        self,
+        *,
+        time_entry_repo: TimeEntryRepository,
+        absence_entry_repo: AbsenceEntryRepository,
+        server_store_repo: ServerStoreRepository,
+    ):
         self.time_entry_repo = time_entry_repo
         self.absence_entry_repo = absence_entry_repo
+        self.server_store_repo = server_store_repo
 
         self.employee_repo = time_entry_repo.employee_repo
         self.session = self.employee_repo.session
@@ -29,6 +37,9 @@ class TimeEntryService:
                 raise UserNotAuthorizedError()
 
         time_entry_in.date_time = quantizise_minute(time_entry_in.date_time)
+
+        if not actor.is_superuser:
+            pass
 
         return None  # type: ignore
 

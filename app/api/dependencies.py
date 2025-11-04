@@ -209,6 +209,32 @@ def get_user_from_refresh_token(
 UserFromRefreshTokenDep = Annotated[User, Depends(get_user_from_refresh_token)]
 
 
+# Server Store
+
+
+def get_server_store_repository(session: DatabaseSession) -> ServerStoreRepository:
+    """Provides an auth service dependency."""
+    return ServerStoreRepository(session=session)
+
+
+ServerStoreRepositoryDep = Annotated[
+    ServerStoreRepository, Depends(get_server_store_repository)
+]
+
+
+# Setup
+
+
+def get_setup_service(
+    user_repo: UserRepositoryDep, server_store_repo: ServerStoreRepositoryDep
+) -> SetupService:
+    """Provides an auth service dependency."""
+    return SetupService(user_repo=user_repo, server_store_repo=server_store_repo)
+
+
+SetupServiceDep = Annotated[SetupService, Depends(get_setup_service)]
+
+
 # Time Entry
 
 
@@ -239,38 +265,14 @@ AbsenceEntryRepositoryDep = Annotated[
 def get_time_entry_service(
     time_entry_repo: TimeEntryRepositoryDep,
     absence_entry_repo: AbsenceEntryRepositoryDep,
+    server_store_repo: ServerStoreRepositoryDep,
 ) -> TimeEntryService:
     """Provides a time entry service dependency."""
     return TimeEntryService(
         time_entry_repo=time_entry_repo,
         absence_entry_repo=absence_entry_repo,
+        server_store_repo=server_store_repo,
     )
 
 
 TimeEntryServiceDep = Annotated[TimeEntryService, Depends(get_time_entry_service)]
-
-
-# Server Store
-
-
-def get_server_store_repository(session: DatabaseSession) -> ServerStoreRepository:
-    """Provides an auth service dependency."""
-    return ServerStoreRepository(session=session)
-
-
-ServerStoreRepositoryDep = Annotated[
-    ServerStoreRepository, Depends(get_server_store_repository)
-]
-
-
-# Setup
-
-
-def get_setup_service(
-    user_repo: UserRepositoryDep, server_store_repo: ServerStoreRepositoryDep
-) -> SetupService:
-    """Provides an auth service dependency."""
-    return SetupService(user_repo=user_repo, server_store_repo=server_store_repo)
-
-
-SetupServiceDep = Annotated[SetupService, Depends(get_setup_service)]
