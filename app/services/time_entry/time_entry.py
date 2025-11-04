@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 import holidays
 
 from app.config.settings import Settings
-from app.core.datetime import quantizise_minute
+from app.core.datetime import is_workday, quantizise_minute
 from app.core.exceptions import (
     DomainError,
     ResourceNotFoundError,
@@ -78,6 +78,10 @@ class TimeEntryService:
         if day_holiday:
             raise DomainError(f"Time entry violates holiday: {day_holiday}")
 
+        if not force:
+            if not is_workday(day):
+                raise DomainError("Time entry is outside workdays")
+
         # TODO
 
         return None  # type: ignore
@@ -85,6 +89,9 @@ class TimeEntryService:
     def update_time_entry(
         self, actor: User, time_entry_update: TimeEntryUpdate, *, force: bool = False
     ) -> TimeEntry:
+        if not actor.is_superuser and force:
+            raise UserNotAuthorizedError()
+
         return None  # type: ignore
 
     def delete_time_entry(

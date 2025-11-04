@@ -28,6 +28,10 @@ def is_workday(day: date) -> bool:
     return day.weekday() != 6
 
 
+def is_in_work_hours(timepoint: time) -> bool:
+    return timepoint >= time(6) and timepoint <= time(22)
+
+
 def get_holiday(
     day: date, *, country: str, subdiv: str | None, language: str | None
 ) -> None | str:
