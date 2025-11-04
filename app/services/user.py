@@ -1,7 +1,10 @@
 import uuid
 from typing import Optional
 
-from app.core.security import verify_password
+from app.core.security import (
+    generate_secure_password_with_requirements,
+    verify_password,
+)
 from app.models.employee import Employee
 from app.models.user import User
 
@@ -17,6 +20,7 @@ from app.core.exceptions import (
     ValidationError,
     InvalidCredentialsError,
 )
+from app.schemas.auth import RemoteResetPasswordRequest, RemoteResetPasswordResponse
 from app.schemas.query import PagedResult
 from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly, UserPatch
 
@@ -93,6 +97,7 @@ class UserService:
 
         self.user_repo.delete_user(user)
         self.session.commit()
+        self.session.refresh(user)
 
     def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
         user = self.user_repo.get_user_by_id(user_id)
@@ -353,3 +358,22 @@ class UserService:
         else:
             if employee.supervisor_id:
                 employee_service.remove_supervisor_from_employee(employee)
+
+    def remote_reset_password(
+        self, actor: User, request: RemoteResetPasswordRequest
+    ) -> RemoteResetPasswordResponse:
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        user = self.user_repo.get_user_by_id(request.user_id)
+        if not user:
+            raise UserNotFoundError(user_id=request.user_id)
+
+        new_password = generate_secure_password_with_requirements(16)
+
+        self.user_repo.update_password(user, new_password)
+        self.user_repo.rotate_token_key(user)
+        self.session.commit()
+        self.session.refresh(user)
+
+        return RemoteResetPasswordResponse(new_password=new_password)

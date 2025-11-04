@@ -42,3 +42,11 @@ class LoginRequest(BaseModel):
 class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class RemoteResetPasswordRequest(BaseModel):
+    user_id: uuid.UUID
+
+
+class RemoteResetPasswordResponse(BaseModel):
+    new_password: str

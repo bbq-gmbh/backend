@@ -6,7 +6,7 @@ from app.api.dependencies import (
     UserFromRefreshTokenDep,
     UserServiceDep,
 )
-from app.schemas.auth import LoginRequest, TokenPair, PasswordChangeRequest
+from app.schemas.auth import LoginRequest, RemoteResetPasswordRequest, RemoteResetPasswordResponse, TokenPair, PasswordChangeRequest
 from app.core.exceptions import InvalidCredentialsError
 from app.schemas.user import UserCreate
 
@@ -91,3 +91,16 @@ def change_password(
         current_password=payload.current_password,
         new_password=payload.new_password,
     )
+
+@router.post(
+    "/remote-reset-password",
+    name="Remote Reset Password",
+    operation_id="remoteResetPasswordForUser",
+    response_model=RemoteResetPasswordResponse
+)
+def remote_reset_password(
+    user: CurrentUserDep,
+    user_service: UserServiceDep,
+    request: RemoteResetPasswordRequest
+) -> RemoteResetPasswordResponse:
+    return user_service.remote_reset_password(user, request=request)
