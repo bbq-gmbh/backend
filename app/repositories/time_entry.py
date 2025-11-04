@@ -5,7 +5,7 @@ from sqlmodel import func, select, or_
 
 from app.core.datetime import get_day_times
 from app.models.employee_time_config import EmployeeTimeConfig
-from app.models.time_entry import TimeEntry
+from app.models.time_entry import TimeEntry, TimeEntryType
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.schemas.time_entry import TimeEntryCreate
@@ -108,3 +108,29 @@ class TimeEntryRepository:
         )
 
         return self.session.scalar(exec) or 0
+
+    def get_last_departure_entry_for_day(self, day: date) -> Optional[TimeEntry]:
+        mi, ma = get_day_times(day)
+
+        exec = (
+            select(TimeEntry)
+            .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
+            .where(TimeEntry.entry_type == TimeEntryType.Departure)
+            .order_by(TimeEntry.date_time.desc())  # type: ignore
+            .limit(1)
+        )
+
+        return self.session.scalar(exec)
+
+    def get_first_arrival_entry_for_day(self, day: date) -> Optional[TimeEntry]:
+        mi, ma = get_day_times(day)
+
+        exec = (
+            select(TimeEntry)
+            .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
+            .where(TimeEntry.entry_type == TimeEntryType.Arrival)
+            .order_by(TimeEntry.date_time.desc())  # type: ignore
+            .limit(1)
+        )
+
+        return self.session.scalar(exec)

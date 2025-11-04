@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -6,6 +6,7 @@ import holidays
 from app.config.settings import Settings
 from app.core.datetime import (
     get_age,
+    get_hours_between,
     is_in_work_hours,
     is_in_work_hours_underage,
     is_workday,
@@ -17,7 +18,7 @@ from app.core.exceptions import (
     ResourceNotFoundError,
     UserNotAuthorizedError,
 )
-from app.models.time_entry import TimeEntry
+from app.models.time_entry import TimeEntry, TimeEntryType
 from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.server_store import ServerStoreRepository
@@ -104,6 +105,39 @@ class TimeEntryService:
 
             if employee_underage and not is_in_work_hours_underage(date_time.time()):
                 raise DomainError("Time entry is in rest period (underage rules)")
+
+        if time_entry_in.entry_type == TimeEntryType.Arrival:
+            departure_entry_before = (
+                self.time_entry_repo.get_last_departure_entry_for_day(
+                    (day - timedelta(days=1))
+                )
+            )
+
+            if departure_entry_before:
+                if get_hours_between(date_time, departure_entry_before.date_time) < 11:
+                    raise DomainError("Arrival entry violates rest hours")
+
+                if (
+                    employee_underage
+                    and get_hours_between(date_time, departure_entry_before.date_time)
+                    < 12
+                ):
+                    raise DomainError("Arrival entry violates rest hours (underage)")
+
+        if time_entry_in.entry_type == TimeEntryType.Departure:
+            arrival_entry_after = self.time_entry_repo.get_first_arrival_entry_for_day(
+                (day + timedelta(days=1))
+            )
+
+            if arrival_entry_after:
+                if get_hours_between(arrival_entry_after.date_time, date_time) < 11:
+                    raise DomainError("Departure entry violates rest hours")
+
+                if (
+                    employee_underage
+                    and get_hours_between(arrival_entry_after.date_time, date_time) < 12
+                ):
+                    raise DomainError("Departure entry violates rest hours (underage)")
 
         # TODO
 

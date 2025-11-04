@@ -31,6 +31,10 @@ def get_age(birth_date, today):
     return age
 
 
+def get_hours_between(dt1, dt2):
+    return (dt1 - dt2).total_seconds() / 3600
+
+
 def is_workday(day: date) -> bool:
     return day.weekday() != 6
 
