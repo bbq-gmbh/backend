@@ -2,7 +2,7 @@ from typing import Optional
 import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import CurrentUserDep, EmployeeServiceDep
+from app.api.dependencies import CurrentUserDep, EmployeeServiceDep, TimeEntryServiceDep
 from app.core.exceptions import (
     EmployeeAlreadyExistsError,
     UserNotAuthorizedError,
@@ -172,3 +172,90 @@ def rebuild_employee_hierarchy(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result["message"],
         )
+
+
+# ==================== Time Entry Endpoints ====================
+
+
+@router.post(
+    "/{user_id}/time_entries",
+    name="Create Time Entry",
+    operation_id="createTimeEntry",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_time_entry(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+):
+    """Create a time entry for an employee."""
+    pass
+
+
+@router.get(
+    "/{user_id}/time_entries",
+    name="Get Time Entries",
+    operation_id="getTimeEntries",
+    status_code=status.HTTP_200_OK,
+)
+def get_time_entries(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+    id: Optional[uuid.UUID] = Query(None, description="Get time entry by ID"),
+    date: Optional[str] = Query(None, description="Get time entries at date"),
+    from_date: Optional[str] = Query(
+        None, alias="from", description="Get time entries from date"
+    ),
+    to_date: Optional[str] = Query(
+        None, alias="to", description="Get time entries to date"
+    ),
+):
+    """Get time entries for an employee by ID, date, or date range."""
+    pass
+
+
+# ==================== Absence Entry Endpoints ====================
+
+
+@router.post(
+    "/{user_id}/absence_entries",
+    name="Create Absence Entry",
+    operation_id="createAbsenceEntry",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_absence_entry(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+    dry: bool = Query(False, description="Dry run without persisting changes"),
+):
+    """Create an absence entry for an employee."""
+    pass
+
+
+@router.get(
+    "/{user_id}/absence_entries",
+    name="Get Absence Entries",
+    operation_id="getAbsenceEntries",
+    status_code=status.HTTP_200_OK,
+)
+def get_absence_entries(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+    id: Optional[uuid.UUID] = Query(None, description="Get absence entry by ID"),
+    date: Optional[str] = Query(None, description="Get absence entries at date"),
+    from_date: Optional[str] = Query(
+        None, alias="from", description="Get absence entries from date"
+    ),
+    to_date: Optional[str] = Query(
+        None, alias="to", description="Get absence entries to date"
+    ),
+):
+    """Get absence entries for an employee by ID, date, or date range."""
+    pass
