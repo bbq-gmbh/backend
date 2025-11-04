@@ -4,9 +4,16 @@ from zoneinfo import ZoneInfo
 import holidays
 
 from app.config.settings import Settings
-from app.core.datetime import is_workday, quantizise_minute
+from app.core.datetime import (
+    get_age,
+    is_in_work_hours,
+    is_in_work_hours_underage,
+    is_workday,
+    quantizise_minute,
+)
 from app.core.exceptions import (
     DomainError,
+    EmployeeNotFoundError,
     ResourceNotFoundError,
     UserNotAuthorizedError,
 )
@@ -47,13 +54,19 @@ class TimeEntryService:
             if not actor.employee or actor.employee.user_id != time_entry_in.user_id:
                 raise UserNotAuthorizedError()
 
+        employee = self.employee_repo.get_employee_by_user_id(time_entry_in.user_id)
+
+        if not employee:
+            raise EmployeeNotFoundError(user_id=time_entry_in.user_id)
+
         time_entry_in.date_time = quantizise_minute(time_entry_in.date_time)
+        date_time = time_entry_in.date_time
         day = time_entry_in.date_time.date()
 
         server_store = self.server_store_repo.get()
         timezone = ZoneInfo(server_store.timezone)
 
-        now_tz = datetime.now(tz=timezone)
+        now_tz = datetime.now(tz=timezone).replace(tzinfo=None)
 
         if day > now_tz:
             raise DomainError("Creating time entries in the future is not allowed")
@@ -75,12 +88,22 @@ class TimeEntryService:
         )
         day_holiday = all_holidays.get(day)
 
-        if day_holiday:
+        if not force and day_holiday:
             raise DomainError(f"Time entry violates holiday: {day_holiday}")
+
+        employee_age = get_age(employee.birthday, day)
+        employee_underage = employee_age < 18
 
         if not force:
             if not is_workday(day):
                 raise DomainError("Time entry is outside workdays")
+
+        if not force:
+            if not is_in_work_hours(date_time.time()):
+                raise DomainError("Time entry is in rest period")
+
+            if employee_underage and not is_in_work_hours_underage(date_time.time()):
+                raise DomainError("Time entry is in rest period (underage rules)")
 
         # TODO
 
