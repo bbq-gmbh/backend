@@ -217,6 +217,23 @@ def get_time_entries(
     pass
 
 
+@router.delete(
+    "/{user_id}/time_entries/{time_entry_id}",
+    name="Delete Time Entry",
+    operation_id="deleteTimeEntry",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_time_entry(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    time_entry_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+):
+    """Delete a time entry for an employee."""
+    pass
+
+
 # ==================== Absence Entry Endpoints ====================
 
 
@@ -258,4 +275,21 @@ def get_absence_entries(
     ),
 ):
     """Get absence entries for an employee by ID, date, or date range."""
+    pass
+
+
+@router.delete(
+    "/{user_id}/absence_entries/{absence_entry_id}",
+    name="Delete Absence Entry",
+    operation_id="deleteAbsenceEntry",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_absence_entry(
+    user: CurrentUserDep,
+    user_id: uuid.UUID,
+    absence_entry_id: uuid.UUID,
+    employee_service: EmployeeServiceDep,
+    time_entry_service: TimeEntryServiceDep,
+):
+    """Delete an absence entry for an employee."""
     pass
