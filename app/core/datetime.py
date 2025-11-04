@@ -33,3 +33,7 @@ def get_holiday(
 ) -> None | str:
     h = holidays.country_holidays(country=country, subdiv=subdiv, language=language)
     return h.get(day)
+
+
+def quantizise_minute(date_time: datetime) -> datetime:
+    return date_time.replace(second=0, microsecond=0)
