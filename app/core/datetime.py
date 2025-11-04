@@ -24,12 +24,23 @@ def get_week_times(day: date) -> tuple[datetime, datetime]:
     return start, end
 
 
+def get_age(birth_date, today):
+    age = today.year - birth_date.year
+    if (today.month, today.day) < (birth_date.month, birth_date.day):
+        age -= 1
+    return age
+
+
 def is_workday(day: date) -> bool:
     return day.weekday() != 6
 
 
 def is_in_work_hours(timepoint: time) -> bool:
     return timepoint >= time(6) and timepoint <= time(22)
+
+
+def is_in_work_hours_underage(timepoint: time):
+    return timepoint >= time(6) and timepoint <= time(20)
 
 
 def get_holiday(
