@@ -6,7 +6,14 @@ from app.api.dependencies import (
     UserFromRefreshTokenDep,
     UserServiceDep,
 )
-from app.schemas.auth import LoginRequest, RemoteResetPasswordRequest, RemoteResetPasswordResponse, TokenPair, PasswordChangeRequest
+from app.schemas.auth import (
+    LoginRequest,
+    RemoteLogoutAllRequest,
+    RemoteResetPasswordRequest,
+    RemoteResetPasswordResponse,
+    TokenPair,
+    PasswordChangeRequest,
+)
 from app.core.exceptions import InvalidCredentialsError
 from app.schemas.user import UserCreate
 
@@ -92,15 +99,29 @@ def change_password(
         new_password=payload.new_password,
     )
 
+
+@router.post(
+    "/remote-logout-all",
+    name="Remote Logout All Sessions",
+    operation_id="remoteLogoutAllSessions",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remote_logout_all(
+    user: CurrentUserDep, user_service: UserServiceDep, request: RemoteLogoutAllRequest
+) -> None:
+    """Logs out from all devices by rotating the token key (invalidates all tokens)."""
+    user_service.remote_logout_all(user, request)
+
+
 @router.post(
     "/remote-reset-password",
     name="Remote Reset Password",
-    operation_id="remoteResetPasswordForUser",
-    response_model=RemoteResetPasswordResponse
+    operation_id="remoteResetPassword",
+    response_model=RemoteResetPasswordResponse,
 )
 def remote_reset_password(
     user: CurrentUserDep,
     user_service: UserServiceDep,
-    request: RemoteResetPasswordRequest
+    request: RemoteResetPasswordRequest,
 ) -> RemoteResetPasswordResponse:
     return user_service.remote_reset_password(user, request=request)

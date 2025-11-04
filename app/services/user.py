@@ -20,7 +20,11 @@ from app.core.exceptions import (
     ValidationError,
     InvalidCredentialsError,
 )
-from app.schemas.auth import RemoteResetPasswordRequest, RemoteResetPasswordResponse
+from app.schemas.auth import (
+    RemoteLogoutAllRequest,
+    RemoteResetPasswordRequest,
+    RemoteResetPasswordResponse,
+)
 from app.schemas.query import PagedResult
 from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly, UserPatch
 
@@ -358,6 +362,18 @@ class UserService:
         else:
             if employee.supervisor_id:
                 employee_service.remove_supervisor_from_employee(employee)
+
+    def remote_logout_all(self, actor: User, request: RemoteLogoutAllRequest) -> None:
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        user = self.user_repo.get_user_by_id(request.user_id)
+        if not user:
+            raise UserNotFoundError(user_id=request.user_id)
+
+        self.user_repo.rotate_token_key(user)
+        self.session.commit()
+        self.session.refresh(user)
 
     def remote_reset_password(
         self, actor: User, request: RemoteResetPasswordRequest
