@@ -122,7 +122,9 @@ class TimeEntryService:
                     and get_hours_between(date_time, departure_entry_before.date_time)
                     < 12
                 ):
-                    raise DomainError("Arrival entry violates rest hours (underage)")
+                    raise DomainError(
+                        "Arrival entry violates rest hours (underage rules)"
+                    )
 
         if time_entry_in.entry_type == TimeEntryType.Departure:
             arrival_entry_after = self.time_entry_repo.get_first_arrival_entry_for_day(
@@ -137,7 +139,9 @@ class TimeEntryService:
                     employee_underage
                     and get_hours_between(arrival_entry_after.date_time, date_time) < 12
                 ):
-                    raise DomainError("Departure entry violates rest hours (underage)")
+                    raise DomainError(
+                        "Departure entry violates rest hours (underage rules)"
+                    )
 
         # TODO
 
