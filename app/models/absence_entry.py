@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class AbsenceEntryType(Enum):
     Sickness = "sickness"
-    Holiday = "holiday"
+    Vacation = "vacation"
     Other = "other"
 
 

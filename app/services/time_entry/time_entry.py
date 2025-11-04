@@ -231,12 +231,14 @@ class TimeEntryService:
                     f"Cannot create absence entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
                 )
 
-        if not force and absence_entry_in.entry_type == AbsenceEntryType.Holiday:
+        if not force and absence_entry_in.entry_type == AbsenceEntryType.Vacation:
             if now_tz_day >= day_begin:
-                raise DomainError("Cannot create absence entry for same or past day")
+                raise DomainError(
+                    "Cannot create absence entry (vacation) for same or past day"
+                )
 
-        if not force and absence_entry_in.entry_type == AbsenceEntryType.Holiday:
-            # TODO: check how many holidays are left
+        if not force and absence_entry_in.entry_type == AbsenceEntryType.Vacation:
+            # TODO: check how many vacation days are left
             pass
 
         absence_entry = self.absence_entry_repo.create_absence_entry(
@@ -286,10 +288,10 @@ class TimeEntryService:
                     f"Cannot modify absence entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
                 )
 
-        if not force and absence_entry.entry_type == AbsenceEntryType.Holiday:
+        if not force and absence_entry.entry_type == AbsenceEntryType.Vacation:
             if now_tz_day >= day:
                 raise DomainError(
-                    "Cannot modify absence entry (holiday) on same or past this day"
+                    "Cannot modify absence entry (vacation) on same or past this day"
                 )
 
         self.absence_entry_repo.delete_absence_entry(absence_entry)
@@ -353,10 +355,14 @@ class TimeEntryService:
     def _extract_holidays_from_extracted_absence_entries(
         arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
     ) -> int:
-        return sum(1 for x in arr if x is not None and x[0] == AbsenceEntryType.Holiday)
+        return sum(
+            1 for x in arr if x is not None and x[0] == AbsenceEntryType.Vacation
+        )
 
     @staticmethod
     def _extract_sick_days_from_extracted_absence_entries(
         arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
     ) -> int:
-        return sum(1 for x in arr if x is not None and x[0] == AbsenceEntryType.Holiday)
+        return sum(
+            1 for x in arr if x is not None and x[0] == AbsenceEntryType.Vacation
+        )
