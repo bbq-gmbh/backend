@@ -81,6 +81,9 @@ class TimeEntryRepository:
         self.session.add(time_entry)
         return time_entry
 
+    def delete_time_entry(self, time_entry: TimeEntry) -> None:
+        self.session.delete(time_entry)
+
     def get_time_entry_by_id(self, id: int) -> Optional[TimeEntry]:
         return self.session.get(TimeEntry, id)
 
