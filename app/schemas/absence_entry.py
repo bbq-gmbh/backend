@@ -13,3 +13,7 @@ class AbsenceEntryCreate(BaseModel):
     entry_type: AbsenceEntryType
     date_begin: date
     date_end: date
+
+
+class AbsenceEntryDelete(BaseModel):
+    id: int

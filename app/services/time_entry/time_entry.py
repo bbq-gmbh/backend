@@ -17,6 +17,7 @@ from app.core.exceptions import (
     EmployeeNotFoundError,
     ResourceNotFoundError,
     UserNotAuthorizedError,
+    ValidationError,
 )
 from app.models.absence_entry import AbsenceEntry
 from app.models.time_entry import TimeEntry, TimeEntryType
@@ -24,7 +25,7 @@ from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.server_store import ServerStoreRepository
 from app.repositories.time_entry import TimeEntryRepository
-from app.schemas.absence_entry import AbsenceEntryCreate
+from app.schemas.absence_entry import AbsenceEntryCreate, AbsenceEntryDelete
 from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete
 
 from .rules import TimeEntryRuleService
@@ -174,7 +175,7 @@ class TimeEntryService:
         now_tz = datetime.now(tz=timezone)
         now_tz_day = now_tz.date()
 
-        if not force and actor.employee:
+        if not force:
             day_diff = (now_tz_day - day).days
             if now_tz_day > day and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
                 raise DomainError(
@@ -201,6 +202,9 @@ class TimeEntryService:
                 or actor.employee.user_id != absence_entry_create.user_id
             ):
                 raise UserNotAuthorizedError()
+        
+        if absence_entry_create.date_begin > absence_entry_create.date_end:
+            raise ValidationError("date_begin is after date_end")
 
         absence_entry = self.absence_entry_repo.create_absence_entry(
             actor, absence_entry_create
@@ -209,3 +213,42 @@ class TimeEntryService:
         self.session.refresh(absence_entry)
 
         return absence_entry
+
+    def delete_absence_entry(
+        self,
+        actor: User,
+        absence_entry_delete: AbsenceEntryDelete,
+        *,
+        force: bool = False,
+    ) -> None:
+        if not actor.is_superuser and force:
+            raise UserNotAuthorizedError()
+
+        absence_entry = self.absence_entry_repo.get_abcence_entry_by_id(
+            absence_entry_delete.id
+        )
+
+        if not absence_entry:
+            raise ResourceNotFoundError()
+
+        if not force:
+            if not actor.employee or actor.employee.user_id != absence_entry.id:
+                raise UserNotAuthorizedError()
+
+        day = absence_entry.date_begin
+
+        server_store = self.server_store_repo.get()
+        timezone = ZoneInfo(server_store.timezone)
+
+        now_tz = datetime.now(tz=timezone)
+        now_tz_day = now_tz.date()
+
+        if not force:
+            if now_tz_day >= day:
+                raise DomainError(
+                    "Cannot modify the absence entry on same or past this day"
+                )
+
+        self.absence_entry_repo.delete_absence_entry(absence_entry)
+        self.session.commit()
+        self.session.refresh(absence_entry)

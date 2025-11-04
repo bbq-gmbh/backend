@@ -28,6 +28,9 @@ class AbsenceEntryRepository:
         )
         self.session.add(time_entry)
         return time_entry
+    
+    def delete_absence_entry(self, absence_entry: AbsenceEntry) -> None:
+        self.session.delete(absence_entry)
 
     def get_abcence_entry_by_id(self, id: int) -> Optional[AbsenceEntry]:
         return self.session.get(AbsenceEntry, id)
