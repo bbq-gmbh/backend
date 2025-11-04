@@ -200,6 +200,7 @@ class TimeEntryService:
         absence_entry_in: AbsenceEntryCreate,
         *,
         force: bool = False,
+        dry: bool = False,
     ) -> AbsenceEntry:
         if not actor.is_superuser and force:
             raise UserNotAuthorizedError()
@@ -244,8 +245,9 @@ class TimeEntryService:
         absence_entry = self.absence_entry_repo.create_absence_entry(
             actor, absence_entry_in
         )
-        self.session.commit()
-        self.session.refresh(absence_entry)
+        if not dry:
+            self.session.commit()
+            self.session.refresh(absence_entry)
 
         return absence_entry
 
