@@ -178,9 +178,6 @@ def rebuild_employee_hierarchy(
         )
 
 
-# ==================== Time Entry Endpoints ====================
-
-
 @router.post(
     "/time_entries",
     name="Create Time Entry",
@@ -235,9 +232,6 @@ def get_time_entries(
 ) -> Optional[TimeEntry] | list[TimeEntry]:
     """Get time entries for an employee by ID, date, or date range."""
     return None  # type: ignore
-
-
-# ==================== Absence Entry Endpoints ====================
 
 
 @router.post(
