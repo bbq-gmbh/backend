@@ -1,6 +1,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import holidays
+
 from app.config.settings import Settings
 from app.core.datetime import quantizise_minute
 from app.core.exceptions import (
@@ -42,23 +44,35 @@ class TimeEntryService:
                 raise UserNotAuthorizedError()
 
         time_entry_in.date_time = quantizise_minute(time_entry_in.date_time)
+        day = time_entry_in.date_time.date()
 
         server_store = self.server_store_repo.get()
         timezone = ZoneInfo(server_store.timezone)
 
-        now = datetime.now(tz=timezone)
+        now_tz = datetime.now(tz=timezone)
 
-        if time_entry_in.date_time.date() > now:
+        if day > now_tz:
             raise DomainError("Creating time entries in the future is not allowed")
 
-        day_entry_count = self.time_entry_repo.get_time_entry_count_for_day(
-            time_entry_in.date_time.date()
-        )
+        day_entry_count = self.time_entry_repo.get_time_entry_count_for_day(day)
 
         if day_entry_count >= Settings.TIME_ENTRY_MAX_ENTRIES_PER_DAY:
             raise DomainError(
                 f"Limit of max {Settings.TIME_ENTRY_MAX_ENTRIES_PER_DAY} time entries each day reached"
             )
+
+        time_config = self.time_entry_repo.get_time_config_for_day(day)
+
+        if not time_config:
+            raise DomainError("Time config does not exist for this date")
+
+        all_holidays = holidays.country_holidays(
+            country="DE", subdiv=time_config.holidays_region, language="DE"
+        )
+        day_holiday = all_holidays.get(day)
+
+        if day_holiday:
+            raise DomainError(f"Time entry violates holiday: {day_holiday}")
 
         return None  # type: ignore
 
