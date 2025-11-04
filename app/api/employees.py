@@ -8,7 +8,9 @@ from app.core.exceptions import (
     UserNotAuthorizedError,
     UserNotFoundError,
 )
+from app.models.absence_entry import AbsenceEntry
 from app.models.employee import Employee
+from app.models.time_entry import TimeEntry
 from app.schemas.employee import (
     EmployeeCreate,
     HierarchyResponse,
@@ -188,9 +190,9 @@ def create_time_entry(
     user_id: uuid.UUID,
     employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
-):
+) -> TimeEntry:
     """Create a time entry for an employee."""
-    pass
+    return None  # type: ignore
 
 
 @router.get(
@@ -212,9 +214,9 @@ def get_time_entries(
     to_date: Optional[str] = Query(
         None, alias="to", description="Get time entries to date"
     ),
-):
+) -> Optional[TimeEntry] | list[TimeEntry]:
     """Get time entries for an employee by ID, date, or date range."""
-    pass
+    return None  # type: ignore
 
 
 @router.delete(
@@ -229,7 +231,7 @@ def delete_time_entry(
     time_entry_id: uuid.UUID,
     employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
-):
+) -> None:
     """Delete a time entry for an employee."""
     pass
 
@@ -249,9 +251,9 @@ def create_absence_entry(
     employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
     dry: bool = Query(False, description="Dry run without persisting changes"),
-):
+) -> AbsenceEntry:
     """Create an absence entry for an employee."""
-    pass
+    return None  # type: ignore
 
 
 @router.get(
@@ -273,7 +275,7 @@ def get_absence_entries(
     to_date: Optional[str] = Query(
         None, alias="to", description="Get absence entries to date"
     ),
-):
+) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
     """Get absence entries for an employee by ID, date, or date range."""
     pass
 
@@ -290,6 +292,6 @@ def delete_absence_entry(
     absence_entry_id: uuid.UUID,
     employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
-):
+) -> None:
     """Delete an absence entry for an employee."""
     pass
