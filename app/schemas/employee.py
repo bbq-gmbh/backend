@@ -1,7 +1,9 @@
 import uuid
 
-from pydantic import BaseModel
+from datetime import date
 from typing import Optional
+
+from pydantic import BaseModel
 
 from .user import UserOnly, UserEmployeeOnly
 
@@ -10,6 +12,7 @@ class EmployeeCreate(BaseModel):
     user_id: uuid.UUID
     first_name: str
     last_name: str
+    birthday: date
 
 
 class EmployeeInfo(UserOnly):
