@@ -20,6 +20,20 @@ class TimeEntryRepository:
         # TODO
         return None
 
+    def get_all_time_config_for_day(self, day: date) -> list[EmployeeTimeConfig]:
+        exec = (
+            select(EmployeeTimeConfig)
+            .where(EmployeeTimeConfig.date_begin <= day)
+            .where(
+                or_(
+                    EmployeeTimeConfig.date_end == None,  # noqa: E711
+                    day <= EmployeeTimeConfig.date_end,  # type: ignore
+                )
+            )
+            .order_by(EmployeeTimeConfig.date_begin.desc())  # type: ignore
+        )
+        return list(self.session.scalars(exec).all())
+
     def get_time_config_for_day(self, day: date) -> Optional[EmployeeTimeConfig]:
         exec = (
             select(EmployeeTimeConfig)
