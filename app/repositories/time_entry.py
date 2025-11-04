@@ -76,7 +76,6 @@ class TimeEntryRepository:
             date_time=time_entry_in.date_time,
             created_by=author.id,
             created_at=now,
-            last_updated=now,
         )
         self.session.add(time_entry)
         return time_entry

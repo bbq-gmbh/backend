@@ -25,7 +25,6 @@ class AbsenceEntryRepository:
             date_end=absence_entry_in.date_end,
             created_by=author.id,
             created_at=now,
-            last_updated=now,
         )
         self.session.add(time_entry)
         return time_entry

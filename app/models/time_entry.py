@@ -25,21 +25,10 @@ class TimeEntry(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), index=True
     )
-    updated_by: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="users.id", index=True
-    )
-    last_updated: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
-        index=True,
-    )
 
     employee: "Employee" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "TimeEntry.user_id"}
     )
     creator: "User" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "TimeEntry.created_by"}
-    )
-    updater: Optional["User"] = Relationship(
-        sa_relationship_kwargs={"foreign_keys": "TimeEntry.updated_by"}
     )

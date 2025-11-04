@@ -28,8 +28,8 @@ class TimeEntryCreate(BaseModel):
 
     entry_type: TimeEntryType
     date_time: datetime
-    
-    ignore: Optional[list[TimeEntryViolation]] = None
+
+    # ignore: Optional[list[TimeEntryViolation]] = None
 
 
 class TimeEntryDelete(BaseModel):
