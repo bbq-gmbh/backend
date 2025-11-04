@@ -11,12 +11,14 @@ from app.core.exceptions import (
 from app.models.absence_entry import AbsenceEntry
 from app.models.employee import Employee
 from app.models.time_entry import TimeEntry
+from app.schemas.absence_entry import AbsenceEntryCreate
 from app.schemas.employee import (
     EmployeeCreate,
     HierarchyResponse,
     HierarchyRebuildResponse,
     HierarchyRebuildStats,
 )
+from app.schemas.time_entry import TimeEntryCreate
 
 router = APIRouter()
 
@@ -188,8 +190,8 @@ def rebuild_employee_hierarchy(
 def create_time_entry(
     user: CurrentUserDep,
     user_id: uuid.UUID,
-    employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
+    time_entry_in: TimeEntryCreate,
 ) -> TimeEntry:
     """Create a time entry for an employee."""
     return None  # type: ignore
@@ -248,8 +250,8 @@ def delete_time_entry(
 def create_absence_entry(
     user: CurrentUserDep,
     user_id: uuid.UUID,
-    employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
+    absence_entry_in: AbsenceEntryCreate,
     dry: bool = Query(False, description="Dry run without persisting changes"),
 ) -> AbsenceEntry:
     """Create an absence entry for an employee."""
