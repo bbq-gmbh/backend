@@ -1,5 +1,9 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+
+from sqlmodel import select
+
+from app.core.datetime import get_day_times
 from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
@@ -28,3 +32,14 @@ class TimeEntryRepository:
 
     def get_time_entry_by_id(self, id: int) -> Optional[TimeEntry]:
         return self.session.get(TimeEntry, id)
+
+    def get_time_entries_for_day(self, day: date) -> list[TimeEntry]:
+        mi, ma = get_day_times(day)
+
+        exec = (
+            select(TimeEntry)
+            .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
+            .order_by(TimeEntry.date_time.asc())  # type: ignore
+        )
+
+        return list(self.session.scalars(exec).all())
