@@ -1,7 +1,7 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlmodel import select, or_
+from sqlmodel import func, select, or_
 
 from app.core.datetime import get_day_times
 from app.models.employee_time_config import EmployeeTimeConfig
@@ -94,3 +94,14 @@ class TimeEntryRepository:
         )
 
         return list(self.session.scalars(exec).all())
+
+    def get_time_entry_count_for_day(self, day: date) -> int:
+        mi, ma = get_day_times(day)
+
+        exec = select(func.count()).select_from(
+            select(TimeEntry)
+            .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
+            .order_by(TimeEntry.date_time.asc())  # type: ignore
+        )
+
+        return self.session.scalar(exec) or 0
