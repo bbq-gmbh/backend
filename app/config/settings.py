@@ -32,6 +32,7 @@ class Settings:
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(_get_env("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
     EMPLOYEE_MAX_HIRARCHY_LEVELS: int = 20
+    EMPLOYEE_TIME_ENTRY_EDIT_MAX_DAYS: int = 7 * 1 # 1 week
 
 
 settings = Settings()
