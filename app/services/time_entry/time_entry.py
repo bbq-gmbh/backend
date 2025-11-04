@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -19,7 +19,7 @@ from app.core.exceptions import (
     UserNotAuthorizedError,
     ValidationError,
 )
-from app.models.absence_entry import AbsenceEntry
+from app.models.absence_entry import AbsenceEntry, AbsenceEntryType
 from app.models.time_entry import TimeEntry, TimeEntryType
 from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
@@ -71,9 +71,17 @@ class TimeEntryService:
         timezone = ZoneInfo(server_store.timezone)
 
         now_tz = datetime.now(tz=timezone).replace(tzinfo=None)
+        now_tz_day = now_tz.date()
 
         if day > now_tz:
             raise DomainError("Creating time entries in the future is not allowed")
+
+        if not force:
+            day_diff = (now_tz_day - day).days
+            if now_tz_day > day and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
+                raise DomainError(
+                    f"Cannot create time entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
+                )
 
         day_entry_count = self.time_entry_repo.get_time_entry_count_for_day(day)
 
@@ -179,7 +187,7 @@ class TimeEntryService:
             day_diff = (now_tz_day - day).days
             if now_tz_day > day and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
                 raise DomainError(
-                    f"Cannot modify the time entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
+                    f"Cannot modify time entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
                 )
 
         self.time_entry_repo.delete_time_entry(time_entry)
@@ -189,7 +197,7 @@ class TimeEntryService:
     def create_absence_entry(
         self,
         actor: User,
-        absence_entry_create: AbsenceEntryCreate,
+        absence_entry_in: AbsenceEntryCreate,
         *,
         force: bool = False,
     ) -> AbsenceEntry:
@@ -197,17 +205,42 @@ class TimeEntryService:
             raise UserNotAuthorizedError()
 
         if not force:
-            if (
-                not actor.employee
-                or actor.employee.user_id != absence_entry_create.user_id
-            ):
+            if not actor.employee or actor.employee.user_id != absence_entry_in.user_id:
                 raise UserNotAuthorizedError()
-        
-        if absence_entry_create.date_begin > absence_entry_create.date_end:
+
+        if not force and absence_entry_in.entry_type == AbsenceEntryType.Other:
+            raise UserNotAuthorizedError()
+
+        day_begin = absence_entry_in.date_begin
+        day_end = absence_entry_in.date_end
+        _days = (day_end - day_begin).days + 1
+
+        if day_begin > day_end:
             raise ValidationError("date_begin is after date_end")
 
+        server_store = self.server_store_repo.get()
+        timezone = ZoneInfo(server_store.timezone)
+
+        now_tz = datetime.now(tz=timezone)
+        now_tz_day = now_tz.date()
+
+        if not force:
+            day_diff = (now_tz_day - day_begin).days
+            if now_tz_day > day_begin and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
+                raise DomainError(
+                    f"Cannot create absence entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
+                )
+
+        if not force and absence_entry_in.entry_type == AbsenceEntryType.Holiday:
+            if now_tz_day >= day_begin:
+                raise DomainError("Cannot create absence entry for same or past day")
+
+        if not force and absence_entry_in.entry_type == AbsenceEntryType.Holiday:
+            # TODO: check how many holidays are left
+            pass
+
         absence_entry = self.absence_entry_repo.create_absence_entry(
-            actor, absence_entry_create
+            actor, absence_entry_in
         )
         self.session.commit()
         self.session.refresh(absence_entry)
@@ -235,6 +268,9 @@ class TimeEntryService:
             if not actor.employee or actor.employee.user_id != absence_entry.id:
                 raise UserNotAuthorizedError()
 
+        if not force and absence_entry.entry_type == AbsenceEntryType.Other:
+            raise UserNotAuthorizedError()
+
         day = absence_entry.date_begin
 
         server_store = self.server_store_repo.get()
@@ -244,11 +280,83 @@ class TimeEntryService:
         now_tz_day = now_tz.date()
 
         if not force:
+            day_diff = (now_tz_day - day).days
+            if now_tz_day > day and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
+                raise DomainError(
+                    f"Cannot modify absence entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
+                )
+
+        if not force and absence_entry.entry_type == AbsenceEntryType.Holiday:
             if now_tz_day >= day:
                 raise DomainError(
-                    "Cannot modify the absence entry on same or past this day"
+                    "Cannot modify absence entry (holiday) on same or past this day"
                 )
 
         self.absence_entry_repo.delete_absence_entry(absence_entry)
         self.session.commit()
         self.session.refresh(absence_entry)
+
+    @staticmethod
+    def _extract_absence_entries(
+        entries, date_begin: date, date_end: date
+    ) -> list[None | tuple[AbsenceEntryType, AbsenceEntry]]:
+        if date_begin > date_end:
+            raise ValueError("date_begin > date_end")
+
+        day_count = (date_end - date_begin).days + 1
+        arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]] = [
+            None for _ in range(day_count)
+        ]
+
+        for entry in entries:
+            entry: AbsenceEntry
+
+            if entry.date_end < date_begin or entry.date_begin > date_end:
+                continue
+
+            for i in range(
+                (entry.date_begin - date_begin).days,
+                (entry.date_end - date_begin).days + 1,
+            ):
+                v = arr[i]
+                if v is not None:
+                    v1, _ = v
+                    if (
+                        v1 == entry.entry_type
+                        or v1 == AbsenceEntryType.Other
+                        or v1 == AbsenceEntryType.Sickness
+                    ):
+                        continue
+                    arr[i] = entry.entry_type, entry
+                else:
+                    arr[i] = entry.entry_type, entry
+
+        return arr
+
+    @staticmethod
+    def _extracted_absence_entries_apply_holidays(
+        arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
+        date_begin: date,
+        holidays: holidays.HolidayBase,
+    ) -> list[None | tuple[AbsenceEntryType, AbsenceEntry]]:
+        ret: list[None | tuple[AbsenceEntryType, AbsenceEntry]] = [
+            None for _ in range(len(arr))
+        ]
+        for i, x in enumerate(arr):
+            day = date_begin + timedelta(days=i)
+            if x is not None and day in holidays:
+                continue
+            ret[i] = x
+        return ret
+
+    @staticmethod
+    def _extract_holidays_from_extracted_absence_entries(
+        arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
+    ) -> int:
+        return sum(1 for x in arr if x is not None and x[0] == AbsenceEntryType.Holiday)
+
+    @staticmethod
+    def _extract_sick_days_from_extracted_absence_entries(
+        arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
+    ) -> int:
+        return sum(1 for x in arr if x is not None and x[0] == AbsenceEntryType.Holiday)
