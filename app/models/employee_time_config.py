@@ -13,7 +13,6 @@ class EmployeeTimeStoreDayConfigDay(BaseModel):
     @field_validator("work_time", "pause_time")
     @classmethod
     def validate_time_positive_and_minute_quantized(cls, v: timedelta) -> timedelta:
-        """Ensure time is positive and quantized to minutes."""
         if v.total_seconds() < 0:
             raise ValueError("Time must be positive")
 
