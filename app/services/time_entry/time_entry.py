@@ -38,9 +38,12 @@ class TimeEntryService:
         self.rule_service = TimeEntryRuleService(time_entry_repo)
 
     def create_time_entry(
-        self, actor: User, time_entry_in: TimeEntryCreate
+        self, actor: User, time_entry_in: TimeEntryCreate, *, force: bool = False
     ) -> TimeEntry:
-        if not actor.is_superuser:
+        if not actor.is_superuser and force:
+            raise UserNotAuthorizedError()
+
+        if not force:
             if not actor.employee or actor.employee.user_id != time_entry_in.user_id:
                 raise UserNotAuthorizedError()
 
@@ -80,17 +83,22 @@ class TimeEntryService:
         return None  # type: ignore
 
     def update_time_entry(
-        self, actor: User, time_entry_update: TimeEntryUpdate
+        self, actor: User, time_entry_update: TimeEntryUpdate, *, force: bool = False
     ) -> TimeEntry:
         return None  # type: ignore
 
-    def delete_time_entry(self, actor: User, time_entry_delete: TimeEntryDelete):
+    def delete_time_entry(
+        self, actor: User, time_entry_delete: TimeEntryDelete, *, force: bool = False
+    ):
+        if not actor.is_superuser and force:
+            raise UserNotAuthorizedError()
+
         time_entry = self.time_entry_repo.get_time_entry_by_id(time_entry_delete.id)
 
         if not time_entry:
             raise ResourceNotFoundError()
 
-        if not actor.is_superuser:
+        if not force:
             if not actor.employee or actor.employee.user_id != time_entry.id:
                 raise UserNotAuthorizedError()
 
@@ -102,7 +110,7 @@ class TimeEntryService:
         now_tz = datetime.now(tz=timezone)
         now_tz_day = now_tz.date()
 
-        if not actor.is_superuser and actor.employee:
+        if not force and actor.employee:
             day_diff = (now_tz_day - day).days
             if now_tz_day > day and day_diff > Settings.TIME_ENTRY_EDIT_MAX_DAYS:
                 raise DomainError(
