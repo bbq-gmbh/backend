@@ -336,7 +336,7 @@ class TimeEntryService:
         return arr
 
     @staticmethod
-    def _extracted_absence_entries_apply_holidays(
+    def _extract_absence_entries_apply_holidays(
         arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
         date_begin: date,
         holidays: holidays.HolidayBase,
