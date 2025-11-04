@@ -10,7 +10,7 @@ from app.models.employee import Employee
 from app.models.employee_hierarchy import EmployeeHierarchy
 from app.models.user import User
 from app.models.time_entry import TimeEntry
-from app.models.abscence_entry import AbscenceEntry
+from app.models.absence_entry import AbsenceEntry
 from app.models.employee_time_config import EmployeeTimeConfig
 
 __all__ = [
@@ -19,6 +19,6 @@ __all__ = [
     "Employee",
     "EmployeeHierarchy",
     "TimeEntry",
-    "AbscenceEntry",
+    "AbsenceEntry",
     "EmployeeTimeConfig",
 ]
