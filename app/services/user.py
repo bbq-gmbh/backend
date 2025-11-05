@@ -271,6 +271,7 @@ class UserService:
         return UserEmployeeOnly(
             first_name=employee.first_name,
             last_name=employee.last_name,
+            birthday=employee.birthday,
         )
 
     @staticmethod
@@ -316,6 +317,9 @@ class UserService:
                 user.employee.first_name = user_patch.new_employee.new_first_name
             if user_patch.new_employee.new_last_name:
                 user.employee.last_name = user_patch.new_employee.new_last_name
+
+            if user_patch.new_employee.new_birthday:
+                user.employee.birthday = user_patch.new_employee.new_birthday
 
             if "new_supervisor_id" in user_patch.new_employee.model_fields_set:
                 self._handle_supervisor_change(
