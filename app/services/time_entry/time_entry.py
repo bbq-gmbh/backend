@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -7,6 +8,7 @@ from app.config.settings import Settings
 from app.core.datetime import (
     get_age,
     get_hours_between,
+    get_years_between,
     is_in_work_hours,
     is_in_work_hours_underage,
     is_workday,
@@ -27,7 +29,8 @@ from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.server_store import ServerStoreRepository
 from app.repositories.time_entry import TimeEntryRepository
 from app.schemas.absence_entry import AbsenceEntryCreate, AbsenceEntryDelete
-from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete
+from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
+from app.services.employee import EmployeeService
 
 from .rules import TimeEntryRuleService
 
@@ -84,7 +87,9 @@ class TimeEntryService:
                     f"Cannot create time entry after {day_diff} day(s) (max allowed: {Settings.TIME_ENTRY_EDIT_MAX_DAYS})"
                 )
 
-        day_entry_count = self.time_entry_repo.get_time_entry_count_for_day(day)
+        day_entry_count = self.time_entry_repo.get_time_entry_count_for_day(
+            employee.user_id, day
+        )
 
         if day_entry_count >= Settings.TIME_ENTRY_MAX_ENTRIES_PER_DAY:
             raise DomainError(
@@ -121,7 +126,7 @@ class TimeEntryService:
         if not force and time_entry_in.entry_type == TimeEntryType.Arrival:
             departure_entry_before = (
                 self.time_entry_repo.get_last_departure_entry_for_day(
-                    (day - timedelta(days=1))
+                    employee.user_id, (day - timedelta(days=1))
                 )
             )
 
@@ -140,7 +145,7 @@ class TimeEntryService:
 
         if not force and time_entry_in.entry_type == TimeEntryType.Departure:
             arrival_entry_after = self.time_entry_repo.get_first_arrival_entry_for_day(
-                (day + timedelta(days=1))
+                employee.user_id, (day + timedelta(days=1))
             )
 
             if arrival_entry_after:
@@ -386,4 +391,46 @@ class TimeEntryService:
     ) -> int:
         return sum(
             1 for x in arr if x is not None and x[0] == AbsenceEntryType.Vacation
+        )
+
+    def get_time_entries(
+        self,
+        employee_service: EmployeeService,
+        actor: User,
+        time_entry_get: TimeEntryGet,
+    ) -> Optional[TimeEntry] | list[TimeEntry]:
+        employee = self.employee_repo.get_employee_by_user_id(time_entry_get.user_id)
+
+        if not employee:
+            raise EmployeeNotFoundError(user_id=time_entry_get.user_id)
+
+        if not actor.is_superuser:
+            if not actor.employee:
+                raise UserNotAuthorizedError()
+            if not employee_service.is_supervisor_of(
+                actor.employee, employee, include_self=True
+            ):
+                raise UserNotAuthorizedError()
+
+        if time_entry_get.id is not None:
+            return self.time_entry_repo.get_time_entry_by_id(time_entry_get.id)
+
+        if time_entry_get.date is not None:
+            return self.time_entry_repo.get_time_entries_for_day(
+                employee.user_id, time_entry_get.date
+            )
+
+        if time_entry_get.from_date is not None and time_entry_get.to_date:
+            from_date, to_date = time_entry_get.from_date, time_entry_get.to_date
+            if from_date > to_date:
+                ValidationError("from_date is after to_date")
+            if get_years_between(to_date, from_date) > 1.05:
+                ValidationError("Maximum date span can be 1 year")
+
+            return self.time_entry_repo.get_time_entries_in_range(
+                employee.user_id, from_date, to_date
+            )
+
+        raise ValidationError(
+            "TimeEntryGet requires either id, date or from_date & to_date"
         )

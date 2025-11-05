@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -86,33 +88,40 @@ class TimeEntryRepository:
     def get_time_entry_by_id(self, id: int) -> Optional[TimeEntry]:
         return self.session.get(TimeEntry, id)
 
-    def get_time_entries_for_day(self, day: date) -> list[TimeEntry]:
+    def get_time_entries_for_day(
+        self, user_id: uuid.UUID, day: date
+    ) -> list[TimeEntry]:
         mi, ma = get_day_times(day)
 
         exec = (
             select(TimeEntry)
+            .where(TimeEntry.user_id == user_id)
             .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
             .order_by(TimeEntry.date_time.asc())  # type: ignore
         )
 
         return list(self.session.scalars(exec).all())
 
-    def get_time_entry_count_for_day(self, day: date) -> int:
+    def get_time_entry_count_for_day(self, user_id: uuid.UUID, day: date) -> int:
         mi, ma = get_day_times(day)
 
         exec = select(func.count()).select_from(
             select(TimeEntry)
+            .where(TimeEntry.user_id == user_id)
             .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
             .order_by(TimeEntry.date_time.asc())  # type: ignore
         )
 
         return self.session.scalar(exec) or 0
 
-    def get_last_departure_entry_for_day(self, day: date) -> Optional[TimeEntry]:
+    def get_last_departure_entry_for_day(
+        self, user_id: uuid.UUID, day: date
+    ) -> Optional[TimeEntry]:
         mi, ma = get_day_times(day)
 
         exec = (
             select(TimeEntry)
+            .where(TimeEntry.user_id == user_id)
             .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
             .where(TimeEntry.entry_type == TimeEntryType.Departure)
             .order_by(TimeEntry.date_time.desc())  # type: ignore
@@ -121,11 +130,14 @@ class TimeEntryRepository:
 
         return self.session.scalar(exec)
 
-    def get_first_arrival_entry_for_day(self, day: date) -> Optional[TimeEntry]:
+    def get_first_arrival_entry_for_day(
+        self, user_id: uuid.UUID, day: date
+    ) -> Optional[TimeEntry]:
         mi, ma = get_day_times(day)
 
         exec = (
             select(TimeEntry)
+            .where(TimeEntry.user_id == user_id)
             .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
             .where(TimeEntry.entry_type == TimeEntryType.Arrival)
             .order_by(TimeEntry.date_time.desc())  # type: ignore
@@ -133,3 +145,18 @@ class TimeEntryRepository:
         )
 
         return self.session.scalar(exec)
+
+    def get_time_entries_in_range(
+        self, user_id: uuid.UUID, date_begin: date, date_end: date
+    ) -> list[TimeEntry]:
+        mi, _ = get_day_times(date_begin)
+        _, ma = get_day_times(date_end)
+
+        exec = (
+            select(TimeEntry)
+            .where(TimeEntry.user_id == user_id)
+            .where(TimeEntry.date_time >= mi, TimeEntry.date_time <= ma)
+            .order_by(TimeEntry.date_time.asc())  # type: ignore
+        )
+
+        return list(self.session.scalars(exec).all())

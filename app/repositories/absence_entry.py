@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -28,15 +30,19 @@ class AbsenceEntryRepository:
         )
         self.session.add(time_entry)
         return time_entry
-    
+
     def delete_absence_entry(self, absence_entry: AbsenceEntry) -> None:
         self.session.delete(absence_entry)
 
     def get_abcence_entry_by_id(self, id: int) -> Optional[AbsenceEntry]:
         return self.session.get(AbsenceEntry, id)
 
-    def get_all_entries_for_day(self, day: date) -> list[AbsenceEntry]:
-        exec = select(AbsenceEntry).where(
-            AbsenceEntry.date_begin >= day, AbsenceEntry.date_end <= day
+    def get_all_entries_for_day(
+        self, user_id: uuid.UUID, day: date
+    ) -> list[AbsenceEntry]:
+        exec = (
+            select(AbsenceEntry)
+            .where(AbsenceEntry.user_id == user_id)
+            .where(AbsenceEntry.date_begin >= day, AbsenceEntry.date_end <= day)
         )
         return list(self.session.scalars(exec).all())

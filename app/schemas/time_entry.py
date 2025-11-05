@@ -20,6 +20,7 @@ class TimeEntryDelete(BaseModel):
 
 
 class TimeEntryGet(BaseModel):
+    user_id: uuid.UUID
     id: Optional[int] = None
     date: Optional[date] = None
     from_date: Optional[date] = None
