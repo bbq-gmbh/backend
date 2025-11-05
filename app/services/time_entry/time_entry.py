@@ -28,7 +28,11 @@ from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.server_store import ServerStoreRepository
 from app.repositories.time_entry import TimeEntryRepository
-from app.schemas.absence_entry import AbsenceEntryCreate, AbsenceEntryDelete
+from app.schemas.absence_entry import (
+    AbsenceEntryCreate,
+    AbsenceEntryDelete,
+    AbsenceEntryGet,
+)
 from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
 from app.services.employee import EmployeeService
 
@@ -433,4 +437,46 @@ class TimeEntryService:
 
         raise ValidationError(
             "TimeEntryGet requires either id, date or from_date & to_date"
+        )
+
+    def get_absence_entries(
+        self,
+        employee_service: EmployeeService,
+        actor: User,
+        absence_entry_get: AbsenceEntryGet,
+    ) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
+        employee = self.employee_repo.get_employee_by_user_id(absence_entry_get.user_id)
+
+        if not employee:
+            raise EmployeeNotFoundError(user_id=absence_entry_get.user_id)
+
+        if not actor.is_superuser:
+            if not actor.employee:
+                raise UserNotAuthorizedError()
+            if not employee_service.is_supervisor_of(
+                actor.employee, employee, include_self=True
+            ):
+                raise UserNotAuthorizedError()
+
+        if absence_entry_get.id is not None:
+            return self.absence_entry_repo.get_abcence_entry_by_id(absence_entry_get.id)
+
+        if absence_entry_get.date is not None:
+            return self.absence_entry_repo.get_all_entries_for_day(
+                employee.user_id, absence_entry_get.date
+            )
+
+        if absence_entry_get.from_date is not None and absence_entry_get.to_date:
+            from_date, to_date = absence_entry_get.from_date, absence_entry_get.to_date
+            if from_date > to_date:
+                ValidationError("from_date is after to_date")
+            if get_years_between(to_date, from_date) > 1.05:
+                ValidationError("Maximum date span can be 1 year")
+
+            return self.absence_entry_repo.get_all_entries_in_range(
+                employee.user_id, from_date, to_date
+            )
+
+        raise ValidationError(
+            "AbsenceEntryGet requires either id, date or from_date & to_date"
         )

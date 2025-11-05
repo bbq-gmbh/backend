@@ -21,6 +21,8 @@ class AbsenceEntryDelete(BaseModel):
 
 
 class AbsenceEntryGet(BaseModel):
+    user_id: uuid.UUID
+
     id: Optional[int] = None
     date: Optional[date] = None
     from_date: Optional[date] = None

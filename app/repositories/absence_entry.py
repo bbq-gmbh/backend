@@ -46,3 +46,17 @@ class AbsenceEntryRepository:
             .where(AbsenceEntry.date_begin >= day, AbsenceEntry.date_end <= day)
         )
         return list(self.session.scalars(exec).all())
+
+    def get_all_entries_in_range(
+        self, user_id: uuid.UUID, date_begin: date, date_end: date
+    ) -> list[AbsenceEntry]:
+        exec = (
+            select(AbsenceEntry)
+            .where(AbsenceEntry.user_id == user_id)
+            .where(
+                AbsenceEntry.date_begin >= date_begin, AbsenceEntry.date_end <= date_end
+            )
+            .order_by(AbsenceEntry.date_time.asc())  # type: ignore
+        )
+
+        return list(self.session.scalars(exec).all())
