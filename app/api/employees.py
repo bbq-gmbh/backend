@@ -11,14 +11,18 @@ from app.core.exceptions import (
 from app.models.absence_entry import AbsenceEntry
 from app.models.employee import Employee
 from app.models.time_entry import TimeEntry
-from app.schemas.absence_entry import AbsenceEntryCreate, AbsenceEntryDelete
+from app.schemas.absence_entry import (
+    AbsenceEntryCreate,
+    AbsenceEntryDelete,
+    AbsenceEntryGet,
+)
 from app.schemas.employee import (
     EmployeeCreate,
     HierarchyResponse,
     HierarchyRebuildResponse,
     HierarchyRebuildStats,
 )
-from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete
+from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
 
 router = APIRouter()
 
@@ -221,14 +225,7 @@ def delete_time_entry(
 def get_time_entries(
     user: CurrentUserDep,
     time_entry_service: TimeEntryServiceDep,
-    id: Optional[uuid.UUID] = Query(None, description="Get time entry by ID"),
-    date: Optional[str] = Query(None, description="Get time entries at date"),
-    from_date: Optional[str] = Query(
-        None, alias="from", description="Get time entries from date"
-    ),
-    to_date: Optional[str] = Query(
-        None, alias="to", description="Get time entries to date"
-    ),
+    time_entry_get: TimeEntryGet,
 ) -> Optional[TimeEntry] | list[TimeEntry]:
     """Get time entries for an employee by ID, date, or date range."""
     return None  # type: ignore
@@ -269,23 +266,15 @@ def delete_absence_entry(
 
 # TODO
 @router.get(
-    "/{absence_entries",
+    "/absence_entries",
     name="Get Absence Entries",
     operation_id="getAbsenceEntries",
     status_code=status.HTTP_200_OK,
 )
 def get_absence_entries(
     user: CurrentUserDep,
-    employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
-    id: Optional[uuid.UUID] = Query(None, description="Get absence entry by ID"),
-    date: Optional[str] = Query(None, description="Get absence entries at date"),
-    from_date: Optional[str] = Query(
-        None, alias="from", description="Get absence entries from date"
-    ),
-    to_date: Optional[str] = Query(
-        None, alias="to", description="Get absence entries to date"
-    ),
+    absence_entry_get: AbsenceEntryGet,
 ) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
     """Get absence entries for an employee by ID, date, or date range."""
     pass

@@ -1,5 +1,6 @@
 import uuid
 
+from typing import Optional
 from datetime import date
 
 from pydantic import BaseModel
@@ -17,3 +18,10 @@ class AbsenceEntryCreate(BaseModel):
 
 class AbsenceEntryDelete(BaseModel):
     id: int
+
+
+class AbsenceEntryGet(BaseModel):
+    id: Optional[int] = None
+    date: Optional[date] = None
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
