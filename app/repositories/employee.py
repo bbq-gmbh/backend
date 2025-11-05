@@ -35,6 +35,10 @@ class EmployeeRepository:
             user_id=employee_in.user_id,
             first_name=employee_in.first_name,
             last_name=employee_in.last_name,
+            birthday=employee_in.birthday,
+            hour_model=employee_in.hour_model,
+            pause_time_minutes=employee_in.pause_time_minutes,
+            start_from=employee_in.start_from,
         )
         self.session.add(employee)
         return employee

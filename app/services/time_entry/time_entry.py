@@ -22,7 +22,6 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.models.absence_entry import AbsenceEntry, AbsenceEntryType
-from app.models.employee_time_config import EmployeeTimeStoreDayConfig
 from app.models.time_entry import TimeEntry, TimeEntryType
 from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
@@ -67,7 +66,9 @@ class TimeEntryService:
         if not employee:
             raise EmployeeNotFoundError(user_id=time_entry_in.user_id)
 
-        time_entry_in.date_time = quantizise_minute(time_entry_in.date_time)
+        time_entry_in.date_time = quantizise_minute(time_entry_in.date_time).replace(
+            tzinfo=None
+        )
         date_time = time_entry_in.date_time
         day = time_entry_in.date_time.date()
 
@@ -77,7 +78,7 @@ class TimeEntryService:
         now_tz = datetime.now(tz=timezone).replace(tzinfo=None)
         now_tz_day = now_tz.date()
 
-        if day > now_tz:
+        if date_time > now_tz:
             raise DomainError("Creating time entries in the future is not allowed")
 
         if not force:
@@ -96,13 +97,8 @@ class TimeEntryService:
                 f"Limit of max {Settings.TIME_ENTRY_MAX_ENTRIES_PER_DAY} time entries each day reached"
             )
 
-        time_config = self.time_entry_repo.get_time_config_for_day(day)
-
-        if not time_config:
-            raise DomainError("Time config does not exist for this date")
-
         all_holidays = holidays.country_holidays(
-            country="DE", subdiv=time_config.holidays_region, language="DE"
+            country="DE", subdiv="BW", language="DE"
         )
         day_holiday = all_holidays.get(day)
 
@@ -178,8 +174,8 @@ class TimeEntryService:
             raise ResourceNotFoundError()
 
         if not force:
-            if not actor.employee or actor.employee.user_id != time_entry.id:
-                raise UserNotAuthorizedError()
+            if not actor.employee or actor.employee.user_id != time_entry.user_id:
+                raise UserNotAuthorizedError("BBBB")
 
         day = time_entry.date_time.date()
 
@@ -198,7 +194,6 @@ class TimeEntryService:
 
         self.time_entry_repo.delete_time_entry(time_entry)
         self.session.commit()
-        self.session.refresh(time_entry)
 
     def create_absence_entry(
         self,
@@ -363,7 +358,6 @@ class TimeEntryService:
     def _extract_absence_entries_apply_workdays(
         arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
         date_begin: date,
-        time_store_day_cfg: EmployeeTimeStoreDayConfig,
     ) -> list[None | tuple[AbsenceEntryType, AbsenceEntry]]:
         ret: list[None | tuple[AbsenceEntryType, AbsenceEntry]] = [
             None for _ in range(len(arr))
@@ -371,7 +365,7 @@ class TimeEntryService:
         for i, x in enumerate(arr):
             day = date_begin + timedelta(days=i)
             if x is not None and (
-                not is_workday(day) or day.weekday() not in time_store_day_cfg
+                not is_workday(day) or day.weekday() not in [0, 1, 2, 3, 4]
             ):
                 continue
             ret[i] = x

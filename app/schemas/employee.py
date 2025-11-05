@@ -1,9 +1,11 @@
 import uuid
 
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
+
+from app.models.employee import HourModel
 
 from .user import UserOnly, UserEmployeeOnly
 
@@ -13,6 +15,9 @@ class EmployeeCreate(BaseModel):
     first_name: str
     last_name: str
     birthday: date
+    hour_model: HourModel
+    pause_time_minutes: int
+    start_from: date
 
 
 class EmployeeInfo(UserOnly):

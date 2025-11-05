@@ -37,13 +37,13 @@ def delete_time_entry(
     user: CurrentUserDep,
     time_entry_service: TimeEntryServiceDep,
     time_entry_delte: TimeEntryDelete,
-    force: Optional[bool] = Query(),
+    force: Optional[bool] = Query(False),
 ) -> None:
     time_entry_service.delete_time_entry(user, time_entry_delte, force=force or False)
 
 
-@router.get(
-    "/",
+@router.post(
+    "/get",
     name="Get Time Entries",
     operation_id="getTimeEntries",
     status_code=status.HTTP_200_OK,

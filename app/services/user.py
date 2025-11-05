@@ -101,7 +101,6 @@ class UserService:
 
         self.user_repo.delete_user(user)
         self.session.commit()
-        self.session.refresh(user)
 
     def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
         user = self.user_repo.get_user_by_id(user_id)

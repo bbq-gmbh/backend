@@ -1,11 +1,19 @@
-from datetime import date
 import uuid
+
+from datetime import date
+from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
+
+
+class HourModel(Enum):
+    e30 = 6
+    e35 = 7
+    e40 = 8
 
 
 class Employee(SQLModel, table=True):
@@ -17,6 +25,9 @@ class Employee(SQLModel, table=True):
         default=None, foreign_key="employees.user_id", index=True
     )
     birthday: date
+    hour_model: HourModel
+    pause_time_minutes: int
+    start_from: date
 
     user: "User" = Relationship(back_populates="employee")
     supervisor: Optional["Employee"] = Relationship(
