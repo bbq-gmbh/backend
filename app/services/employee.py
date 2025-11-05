@@ -40,7 +40,7 @@ class EmployeeService:
             user_id=employee_in.user_id,
             first_name=employee_in.first_name,
             last_name=employee_in.last_name,
-            birthday=employee_in.birthday
+            birthday=employee_in.birthday,
         )
         user.employee = employee
 

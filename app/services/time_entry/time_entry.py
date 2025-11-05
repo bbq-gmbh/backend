@@ -36,8 +36,6 @@ from app.schemas.absence_entry import (
 from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
 from app.services.employee import EmployeeService
 
-from .rules import TimeEntryRuleService
-
 
 class TimeEntryService:
     def __init__(
@@ -53,8 +51,6 @@ class TimeEntryService:
 
         self.employee_repo = time_entry_repo.employee_repo
         self.session = self.employee_repo.session
-
-        self.rule_service = TimeEntryRuleService(time_entry_repo)
 
     def create_time_entry(
         self, actor: User, time_entry_in: TimeEntryCreate, *, force: bool = False
