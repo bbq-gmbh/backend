@@ -2,27 +2,19 @@ from typing import Optional
 import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import CurrentUserDep, EmployeeServiceDep, TimeEntryServiceDep
+from app.api.dependencies import CurrentUserDep, EmployeeServiceDep
 from app.core.exceptions import (
     EmployeeAlreadyExistsError,
     UserNotAuthorizedError,
     UserNotFoundError,
 )
-from app.models.absence_entry import AbsenceEntry
 from app.models.employee import Employee
-from app.models.time_entry import TimeEntry
-from app.schemas.absence_entry import (
-    AbsenceEntryCreate,
-    AbsenceEntryDelete,
-    AbsenceEntryGet,
-)
 from app.schemas.employee import (
     EmployeeCreate,
     HierarchyResponse,
     HierarchyRebuildResponse,
     HierarchyRebuildStats,
 )
-from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
 
 router = APIRouter()
 
@@ -180,105 +172,3 @@ def rebuild_employee_hierarchy(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result["message"],
         )
-
-
-@router.post(
-    "/time_entries",
-    name="Create Time Entry",
-    operation_id="createTimeEntry",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_time_entry(
-    user: CurrentUserDep,
-    time_entry_service: TimeEntryServiceDep,
-    time_entry_in: TimeEntryCreate,
-    force: bool = Query(False),
-) -> TimeEntry:
-    """Create a time entry for an employee."""
-    return time_entry_service.create_time_entry(
-        user, time_entry_in, force=force or False
-    )
-
-
-@router.delete(
-    "/time_entries",
-    name="Delete Time Entry",
-    operation_id="deleteTimeEntry",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-def delete_time_entry(
-    user: CurrentUserDep,
-    time_entry_service: TimeEntryServiceDep,
-    time_entry_delte: TimeEntryDelete,
-    force: Optional[bool] = Query(),
-) -> None:
-    time_entry_service.delete_time_entry(user, time_entry_delte, force=force or False)
-
-
-# TODO
-@router.get(
-    "/time_entries",
-    name="Get Time Entries",
-    operation_id="getTimeEntries",
-    status_code=status.HTTP_200_OK,
-)
-def get_time_entries(
-    user: CurrentUserDep,
-    employee_service: EmployeeServiceDep,
-    time_entry_service: TimeEntryServiceDep,
-    time_entry_get: TimeEntryGet,
-) -> Optional[TimeEntry] | list[TimeEntry]:
-    """Get time entries for an employee by ID, date, or date range."""
-    return time_entry_service.get_time_entries(employee_service, user, time_entry_get)
-
-
-@router.post(
-    "/absence_entries",
-    name="Create Absence Entry",
-    operation_id="createAbsenceEntry",
-    status_code=status.HTTP_201_CREATED,
-)
-def create_absence_entry(
-    user: CurrentUserDep,
-    time_entry_service: TimeEntryServiceDep,
-    absence_entry_in: AbsenceEntryCreate,
-    force: bool = Query(False),
-    dry: bool = Query(False),
-) -> AbsenceEntry:
-    """Create an absence entry for an employee."""
-    return time_entry_service.create_absence_entry(
-        user, absence_entry_in, force=force, dry=dry
-    )
-
-
-@router.delete(
-    "/absence_entries",
-    name="Delete Absence Entry",
-    operation_id="deleteAbsenceEntry",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-def delete_absence_entry(
-    user: CurrentUserDep,
-    time_entry_service: TimeEntryServiceDep,
-    absence_entry_delete: AbsenceEntryDelete,
-) -> None:
-    time_entry_service.delete_absence_entry(user, absence_entry_delete)
-
-
-# TODO
-@router.get(
-    "/absence_entries",
-    name="Get Absence Entries",
-    operation_id="getAbsenceEntries",
-    status_code=status.HTTP_200_OK,
-)
-def get_absence_entries(
-    user: CurrentUserDep,
-    employee_service: EmployeeServiceDep,
-    time_entry_service: TimeEntryServiceDep,
-    absence_entry_get: AbsenceEntryGet,
-) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
-    """Get absence entries for an employee by ID, date, or date range."""
-    return time_entry_service.get_absence_entries(
-        employee_service, user, absence_entry_get
-    )

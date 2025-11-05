@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import auth, employees, me, users, setup
+from app.api import auth, employees, me, users, setup, time_entries, absence_entries
 
 
 def register_routes(app: FastAPI) -> None:
@@ -14,4 +14,6 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(users.router, prefix="/users", tags=["users"])
     app.include_router(auth.router, prefix="/auth", tags=["auth"])
     app.include_router(employees.router, prefix="/employees", tags=["employees"])
+    app.include_router(time_entries.router, prefix="/time_entries", tags=["time_entries"])
+    app.include_router(absence_entries.router, prefix="/absence_entries", tags=["absence_entries"])
     app.include_router(setup.router, prefix="/__setup", tags=["setup"])
