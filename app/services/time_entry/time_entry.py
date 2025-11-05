@@ -20,6 +20,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.models.absence_entry import AbsenceEntry, AbsenceEntryType
+from app.models.employee_time_config import EmployeeTimeStoreDayConfig
 from app.models.time_entry import TimeEntry, TimeEntryType
 from app.models.user import User
 from app.repositories.absence_entry import AbsenceEntryRepository
@@ -349,6 +350,24 @@ class TimeEntryService:
         for i, x in enumerate(arr):
             day = date_begin + timedelta(days=i)
             if x is not None and day in holidays:
+                continue
+            ret[i] = x
+        return ret
+
+    @staticmethod
+    def _extract_absence_entries_apply_workdays(
+        arr: list[None | tuple[AbsenceEntryType, AbsenceEntry]],
+        date_begin: date,
+        time_store_day_cfg: EmployeeTimeStoreDayConfig,
+    ) -> list[None | tuple[AbsenceEntryType, AbsenceEntry]]:
+        ret: list[None | tuple[AbsenceEntryType, AbsenceEntry]] = [
+            None for _ in range(len(arr))
+        ]
+        for i, x in enumerate(arr):
+            day = date_begin + timedelta(days=i)
+            if x is not None and (
+                not is_workday(day) or day.weekday() not in time_store_day_cfg
+            ):
                 continue
             ret[i] = x
         return ret
