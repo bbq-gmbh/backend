@@ -40,6 +40,7 @@ class EmployeeService:
             user_id=employee_in.user_id,
             first_name=employee_in.first_name,
             last_name=employee_in.last_name,
+            birthday=employee_in.birthday,
         )
         user.employee = employee
 
@@ -89,51 +90,61 @@ class EmployeeService:
 
     def delete_employee_and_heal_hierarchy(self, employee: Employee) -> None:
         """Delete an employee and heal the hierarchy by reconnecting their subordinates.
-        
+
         When an employee is deleted from the hierarchy (e.g., A -> B -> C), this method:
         1. Gets the employee's supervisor (A) and direct subordinates (C)
         2. Removes all hierarchy paths involving the deleted employee
         3. Reassigns all direct subordinates to the employee's supervisor (A -> C)
         4. Recreates hierarchy paths for each subordinate and their descendants
         5. Deletes the employee record
-        
+
         If the employee has no supervisor, their subordinates become top-level employees.
-        
+
         Args:
             employee: The employee to delete
         """
         direct_subordinates = [
-            sub for sub in employee.subordinates if sub.supervisor_id == employee.user_id
+            sub
+            for sub in employee.subordinates
+            if sub.supervisor_id == employee.user_id
         ]
-        
+
         supervisor_id = employee.supervisor_id
         supervisor = employee.supervisor
-        
+
         for subordinate in direct_subordinates:
             descendant_ids = self.hierarchy_repo.get_descendant_ids(
                 subordinate.user_id, include_self=True
             )
-            
+
             if employee.supervisor_id:
                 ancestor_ids_to_remove = self.hierarchy_repo.get_ancestor_ids(
                     employee.user_id, include_self=True
                 )
             else:
                 ancestor_ids_to_remove = [employee.user_id]
-            
-            self.hierarchy_repo.delete_hierarchy_paths(ancestor_ids_to_remove, descendant_ids)
-        
-        ancestor_ids_of_employee = self.hierarchy_repo.get_ancestor_ids(employee.user_id, include_self=False)
+
+            self.hierarchy_repo.delete_hierarchy_paths(
+                ancestor_ids_to_remove, descendant_ids
+            )
+
+        ancestor_ids_of_employee = self.hierarchy_repo.get_ancestor_ids(
+            employee.user_id, include_self=False
+        )
         if ancestor_ids_of_employee:
-            self.hierarchy_repo.delete_hierarchy_paths(ancestor_ids_of_employee, [employee.user_id])
-        
-        self.hierarchy_repo.delete_hierarchy_paths([employee.user_id], [employee.user_id])
-        
+            self.hierarchy_repo.delete_hierarchy_paths(
+                ancestor_ids_of_employee, [employee.user_id]
+            )
+
+        self.hierarchy_repo.delete_hierarchy_paths(
+            [employee.user_id], [employee.user_id]
+        )
+
         for subordinate in direct_subordinates:
             subordinate.supervisor_id = supervisor_id
             subordinate.supervisor = supervisor
             self.session.add(subordinate)
-            
+
             if supervisor_id:
                 new_ancestor_ids = self.hierarchy_repo.get_ancestor_ids(
                     supervisor_id, include_self=True
@@ -141,8 +152,10 @@ class EmployeeService:
                 descendant_ids = self.hierarchy_repo.get_descendant_ids(
                     subordinate.user_id, include_self=True
                 )
-                self.hierarchy_repo.insert_hierarchy_paths(new_ancestor_ids, descendant_ids)
-        
+                self.hierarchy_repo.insert_hierarchy_paths(
+                    new_ancestor_ids, descendant_ids
+                )
+
         self.employee_repo.delete_employee(employee)
         self.session.commit()
 
@@ -347,16 +360,16 @@ class EmployeeService:
 
     def rebuild_hierarchy(self, force: bool = False) -> dict:
         """Rebuild the entire employee hierarchy.
-        
+
         This orchestrates the full hierarchy rebuild process:
         1. Optionally validates data integrity before rebuild
         2. Calls repository method to rebuild hierarchy table
         3. Validates the rebuilt hierarchy
         4. Returns comprehensive report
-        
+
         Args:
             force: If True, skip pre-validation checks
-            
+
         Returns:
             Dictionary containing:
             - success: Whether rebuild succeeded
@@ -364,9 +377,9 @@ class EmployeeService:
             - validation: Validation results
         """
         import time
-        
+
         start_time = time.time()
-        
+
         pre_validation_issues = []
         if not force:
             orphaned = self.hierarchy_repo.find_orphaned_employees()
@@ -374,20 +387,17 @@ class EmployeeService:
                 pre_validation_issues.append(
                     f"Found {len(orphaned)} orphaned employees with invalid supervisor_id"
                 )
-        
+
         try:
             rebuild_stats = self.hierarchy_repo.rebuild_hierarchy_full()
             self.session.commit()
-            
+
             duration = time.time() - start_time
-            
-            stats = {
-                **rebuild_stats,
-                'duration_seconds': duration
-            }
-            
+
+            stats = {**rebuild_stats, "duration_seconds": duration}
+
             post_stats = self.hierarchy_repo.get_hierarchy_statistics()
-            
+
             return {
                 "success": True,
                 "message": "Hierarchy rebuilt successfully",
@@ -408,21 +418,21 @@ class EmployeeService:
                     "error": str(e),
                 },
             }
-    
+
     def get_hierarchy_for_employee(self, employee: Employee) -> dict:
         """Get hierarchy information for a specific employee.
-        
+
         Returns information about the employee's position in the hierarchy,
         including their supervisors and subordinates.
-        
+
         Args:
             employee: The employee to get hierarchy info for
-            
+
         Returns:
             Dictionary with employee info, supervisors, and subordinates
         """
         from app.schemas.employee import HierarchyNode
-        
+
         depth = self._get_depth(employee)
         employee_node = HierarchyNode(
             user_id=employee.user_id,
@@ -432,7 +442,7 @@ class EmployeeService:
             supervisor_id=employee.supervisor_id,
             depth=depth,
         )
-        
+
         supervisors = self.hierarchy_repo.get_supervisors(
             employee.user_id, include_self=False
         )
@@ -447,7 +457,7 @@ class EmployeeService:
             )
             for sup in supervisors
         ]
-        
+
         subordinates = self.hierarchy_repo.get_subordinates(
             employee.user_id, include_self=False
         )
@@ -462,7 +472,7 @@ class EmployeeService:
             )
             for sub in subordinates
         ]
-        
+
         return {
             "employee": employee_node,
             "supervisors": supervisor_nodes,

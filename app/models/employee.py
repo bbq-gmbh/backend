@@ -1,3 +1,4 @@
+from datetime import date
 import uuid
 from typing import TYPE_CHECKING, Optional
 
@@ -15,6 +16,7 @@ class Employee(SQLModel, table=True):
     supervisor_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="employees.user_id", index=True
     )
+    birthday: date
 
     user: "User" = Relationship(back_populates="employee")
     supervisor: Optional["Employee"] = Relationship(

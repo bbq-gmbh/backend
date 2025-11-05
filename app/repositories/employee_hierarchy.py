@@ -47,10 +47,10 @@ class EmployeeHierarchyRepository:
 
     def delete_hierarchy_paths_for_employee(self, user_id: uuid.UUID) -> None:
         """Delete all hierarchy paths involving an employee.
-        
+
         This removes all records where the employee appears as either ancestor or descendant.
         Used when completely removing an employee from the hierarchy.
-        
+
         Args:
             user_id: The employee's user ID to remove from hierarchy
         """
@@ -59,7 +59,7 @@ class EmployeeHierarchyRepository:
             EmployeeHierarchy.ancestor_id == user_id  # type: ignore
         )
         self.session.exec(exec_del_ancestor)
-        
+
         # Delete where employee is descendant (all their supervisors)
         exec_del_descendant = delete(EmployeeHierarchy).where(
             EmployeeHierarchy.descendant_id == user_id  # type: ignore
@@ -276,12 +276,12 @@ class EmployeeHierarchyRepository:
 
     def rebuild_hierarchy_full(self) -> dict[str, int]:
         """Completely rebuild the employee hierarchy table.
-        
+
         This method:
         1. Deletes all records from employee_hierarchy table
         2. For each employee, adds self-reference (depth=0)
         3. For each employee, traverses supervisor chain to create all paths
-        
+
         Returns:
             Dictionary with statistics:
             - records_deleted: Number of old records removed
@@ -290,27 +290,27 @@ class EmployeeHierarchyRepository:
         """
         # Step 1: Clear all existing hierarchy records
         records_deleted = self.clear_all_hierarchy()
-        
+
         # Step 2: Get all employees
         all_employees = self.get_all_employees()
         employees_processed = len(all_employees)
         records_created = 0
-        
+
         # Create a map for quick employee lookup
         employee_map = {emp.user_id: emp for emp in all_employees}
-        
+
         # Step 3: Add self-references for all employees
         for employee in all_employees:
             self.add_self_reference(employee)
             records_created += 1
-        
+
         # Step 4: For each employee, create paths to all ancestors
         for employee in all_employees:
             if employee.supervisor_id:
                 # Traverse up the supervisor chain
                 current_id = employee.supervisor_id
                 depth = 1
-                
+
                 while current_id is not None and depth <= 100:  # Safety limit
                     # Create hierarchy entry
                     hierarchy_entry = EmployeeHierarchy(
@@ -320,7 +320,7 @@ class EmployeeHierarchyRepository:
                     )
                     self.session.add(hierarchy_entry)
                     records_created += 1
-                    
+
                     # Move up to next supervisor
                     current_emp = employee_map.get(current_id)
                     if current_emp and current_emp.supervisor_id:
@@ -328,10 +328,10 @@ class EmployeeHierarchyRepository:
                         depth += 1
                     else:
                         break
-        
+
         # Commit all changes
         self.session.flush()
-        
+
         return {
             "records_deleted": records_deleted,
             "records_created": records_created,

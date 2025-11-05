@@ -1,11 +1,20 @@
+from typing import Optional
 import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import CurrentUserDep, EmployeeServiceDep
+from app.api.dependencies import CurrentUserDep, EmployeeServiceDep, TimeEntryServiceDep
 from app.core.exceptions import (
     EmployeeAlreadyExistsError,
     UserNotAuthorizedError,
     UserNotFoundError,
+)
+from app.models.absence_entry import AbsenceEntry
+from app.models.employee import Employee
+from app.models.time_entry import TimeEntry
+from app.schemas.absence_entry import (
+    AbsenceEntryCreate,
+    AbsenceEntryDelete,
+    AbsenceEntryGet,
 )
 from app.schemas.employee import (
     EmployeeCreate,
@@ -13,6 +22,7 @@ from app.schemas.employee import (
     HierarchyRebuildResponse,
     HierarchyRebuildStats,
 )
+from app.schemas.time_entry import TimeEntryCreate, TimeEntryDelete, TimeEntryGet
 
 router = APIRouter()
 
@@ -35,9 +45,7 @@ def get_my_employee(user: CurrentUserDep):
     response_model=HierarchyResponse,
 )
 def get_employee_hierarchy(
-    user: CurrentUserDep,
-    employee_service: EmployeeServiceDep,
-    user_id: uuid.UUID
+    user: CurrentUserDep, employee_service: EmployeeServiceDep, user_id: uuid.UUID
 ):
     """Get hierarchy information for an employee including supervisors and subordinates."""
     # Get the target employee
@@ -47,7 +55,7 @@ def get_employee_hierarchy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Employee not found for user {user_id}",
         )
-    
+
     # Authorization check
     if not user.is_superuser:
         # Non-superusers can only view their own hierarchy or subordinates
@@ -64,7 +72,7 @@ def get_employee_hierarchy(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this employee's hierarchy",
             )
-    
+
     # Get and return hierarchy
     hierarchy_data = employee_service.get_hierarchy_for_employee(target_employee)
     return HierarchyResponse(**hierarchy_data)
@@ -75,6 +83,7 @@ def get_employee_hierarchy(
     name="Get Employee By User ID",
     operation_id="getEmployeeByUserId",
     status_code=status.HTTP_200_OK,
+    response_model=Optional[Employee],
 )
 def get_employee_by_user_id(
     _: CurrentUserDep, user_id: uuid.UUID, employee_service: EmployeeServiceDep
@@ -118,14 +127,12 @@ def create_employee(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_employee(
-    user: CurrentUserDep,
-    user_id: uuid.UUID,
-    employee_service: EmployeeServiceDep
+    user: CurrentUserDep, user_id: uuid.UUID, employee_service: EmployeeServiceDep
 ):
     """Delete an employee and heal the hierarchy (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
-    
+
     try:
         employee = employee_service.get_employee_by_user_id(user_id)
         if not employee:
@@ -133,13 +140,12 @@ def delete_employee(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Employee not found for user {user_id}",
             )
-        
+
         employee_service.delete_employee_and_heal_hierarchy(employee)
-        
+
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User {user_id} not found"
         )
 
 
@@ -153,14 +159,16 @@ def delete_employee(
 def rebuild_employee_hierarchy(
     user: CurrentUserDep,
     employee_service: EmployeeServiceDep,
-    force: bool = Query(False, description="Force rebuild without pre-validation checks"),
+    force: bool = Query(
+        False, description="Force rebuild without pre-validation checks"
+    ),
 ):
     """Rebuild the entire employee hierarchy table (superuser only)."""
     if not user.is_superuser:
         raise UserNotAuthorizedError()
-    
+
     result = employee_service.rebuild_hierarchy(force=force)
-    
+
     if result["success"]:
         return HierarchyRebuildResponse(
             success=True,
@@ -172,3 +180,101 @@ def rebuild_employee_hierarchy(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result["message"],
         )
+
+
+@router.post(
+    "/time_entries",
+    name="Create Time Entry",
+    operation_id="createTimeEntry",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_time_entry(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    time_entry_in: TimeEntryCreate,
+    force: bool = Query(False),
+) -> TimeEntry:
+    """Create a time entry for an employee."""
+    return time_entry_service.create_time_entry(
+        user, time_entry_in, force=force or False
+    )
+
+
+@router.delete(
+    "/time_entries",
+    name="Delete Time Entry",
+    operation_id="deleteTimeEntry",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_time_entry(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    time_entry_delte: TimeEntryDelete,
+    force: Optional[bool] = Query(),
+) -> None:
+    time_entry_service.delete_time_entry(user, time_entry_delte, force=force or False)
+
+
+# TODO
+@router.get(
+    "/time_entries",
+    name="Get Time Entries",
+    operation_id="getTimeEntries",
+    status_code=status.HTTP_200_OK,
+)
+def get_time_entries(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    time_entry_get: TimeEntryGet,
+) -> Optional[TimeEntry] | list[TimeEntry]:
+    """Get time entries for an employee by ID, date, or date range."""
+    return time_entry_service.get_time_entries(user, time_entry_get)
+
+
+@router.post(
+    "/absence_entries",
+    name="Create Absence Entry",
+    operation_id="createAbsenceEntry",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_absence_entry(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    absence_entry_in: AbsenceEntryCreate,
+    force: bool = Query(False),
+    dry: bool = Query(False),
+) -> AbsenceEntry:
+    """Create an absence entry for an employee."""
+    return time_entry_service.create_absence_entry(
+        user, absence_entry_in, force=force, dry=dry
+    )
+
+
+@router.delete(
+    "/absence_entries",
+    name="Delete Absence Entry",
+    operation_id="deleteAbsenceEntry",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_absence_entry(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    absence_entry_delete: AbsenceEntryDelete,
+) -> None:
+    time_entry_service.delete_absence_entry(user, absence_entry_delete)
+
+
+# TODO
+@router.get(
+    "/absence_entries",
+    name="Get Absence Entries",
+    operation_id="getAbsenceEntries",
+    status_code=status.HTTP_200_OK,
+)
+def get_absence_entries(
+    user: CurrentUserDep,
+    time_entry_service: TimeEntryServiceDep,
+    absence_entry_get: AbsenceEntryGet,
+) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
+    """Get absence entries for an employee by ID, date, or date range."""
+    return time_entry_service.get_absence_entries(user, absence_entry_get)

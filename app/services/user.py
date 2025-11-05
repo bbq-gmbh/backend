@@ -1,7 +1,10 @@
 import uuid
 from typing import Optional
 
-from app.core.security import verify_password
+from app.core.security import (
+    generate_secure_password_with_requirements,
+    verify_password,
+)
 from app.models.employee import Employee
 from app.models.user import User
 
@@ -17,17 +20,22 @@ from app.core.exceptions import (
     ValidationError,
     InvalidCredentialsError,
 )
+from app.schemas.auth import (
+    RemoteLogoutAllRequest,
+    RemoteResetPasswordRequest,
+    RemoteResetPasswordResponse,
+)
 from app.schemas.query import PagedResult
 from app.schemas.user import UserCreate, UserEmployeeOnly, UserInfo, UserOnly, UserPatch
 
 
 class UserService:
     def __init__(
-        self, 
-        *, 
+        self,
+        *,
         user_repo: UserRepository,
         employee_repo: Optional[EmployeeRepository] = None,
-        hierarchy_repo: Optional[EmployeeHierarchyRepository] = None
+        hierarchy_repo: Optional[EmployeeHierarchyRepository] = None,
     ):
         self.user_repo = user_repo
         self.employee_repo = employee_repo
@@ -82,17 +90,18 @@ class UserService:
 
         if user.employee and self.employee_repo and self.hierarchy_repo:
             from app.services.employee import EmployeeService
-            
+
             employee_service = EmployeeService(
                 employee_repo=self.employee_repo,
                 employee_hierarchy_repo=self.hierarchy_repo,
-                user_repo=self.user_repo
+                user_repo=self.user_repo,
             )
             employee_service.delete_employee_and_heal_hierarchy(user.employee)
             user.employee = None
 
         self.user_repo.delete_user(user)
         self.session.commit()
+        self.session.refresh(user)
 
     def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
         user = self.user_repo.get_user_by_id(user_id)
@@ -155,17 +164,23 @@ class UserService:
         return self.user_repo.get_users(page, page_size)
 
     def get_user_employee_pairs(
-        self, page: int, page_size: int
+        self, page: int, page_size: int, is_employee: Optional[bool] = None
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
         if page_size <= 0:
             raise ValidationError("Page Size must be greater than 0")
         if page < 0:
             raise ValidationError("Page must be non negative")
 
-        return PagedResult(
-            page=self.user_repo.get_user_employee_pairs(page, page_size),
-            total=self.user_repo.get_user_employee_pairs_count(),
-        )
+        if is_employee is None:
+            return PagedResult(
+                page=self.user_repo.get_user_employee_pairs(page, page_size),
+                total=self.user_repo.get_user_employee_pairs_count(),
+            )
+        else:
+            users = self.user_repo.get_users_filtered(page, page_size, is_employee)
+            total = self.user_repo.get_users_filtered_count(is_employee)
+            pairs = [(user, user.employee) for user in users]
+            return PagedResult(page=pairs, total=total)
 
     def get_lower_user_employee_pairs_paged(
         self, employee: Employee, page: int, page_size: int
@@ -185,10 +200,10 @@ class UserService:
         )
 
     def get_visible_user_employee_pairs(
-        self, actor: User, page: int, page_size: int
+        self, actor: User, page: int, page_size: int, is_employee: Optional[bool] = None
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
         if actor.is_superuser:
-            return self.get_user_employee_pairs(page, page_size)
+            return self.get_user_employee_pairs(page, page_size, is_employee)
 
         if actor.employee:
             return PagedResult(
@@ -206,6 +221,41 @@ class UserService:
             raise ValidationError("Page must be non negative")
 
         return PagedResult(page=[(actor, actor.employee)], total=1)
+
+    def search_users_by_username(
+        self,
+        actor: User,
+        username_query: str,
+        page: int,
+        page_size: int,
+        is_employee: Optional[bool] = None,
+    ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
+        """Search users by username with optional employee status filter."""
+        if page_size <= 0:
+            raise ValidationError("Page Size must be greater than 0")
+        if page < 0:
+            raise ValidationError("Page must be non negative")
+        if not username_query:
+            raise ValidationError("Search query cannot be empty")
+
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        if is_employee is None:
+            users = self.user_repo.search_users_by_username(
+                username_query, page, page_size
+            )
+            total = self.user_repo.search_users_by_username_count(username_query)
+        else:
+            users = self.user_repo.search_users_by_username_filtered(
+                username_query, page, page_size, is_employee
+            )
+            total = self.user_repo.search_users_by_username_filtered_count(
+                username_query, is_employee
+            )
+
+        pairs = [(user, user.employee) for user in users]
+        return PagedResult(page=pairs, total=total)
 
     @staticmethod
     def _user_to_user_only(user: User) -> UserOnly:
@@ -266,44 +316,80 @@ class UserService:
                 user.employee.first_name = user_patch.new_employee.new_first_name
             if user_patch.new_employee.new_last_name:
                 user.employee.last_name = user_patch.new_employee.new_last_name
-            
-            if 'new_supervisor_id' in user_patch.new_employee.model_fields_set:
+
+            if "new_supervisor_id" in user_patch.new_employee.model_fields_set:
                 self._handle_supervisor_change(
-                    user.employee, 
-                    user_patch.new_employee.new_supervisor_id
+                    user.employee, user_patch.new_employee.new_supervisor_id
                 )
 
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
 
-    def _handle_supervisor_change(self, employee: Employee, new_supervisor_id: Optional[uuid.UUID]):
+    def _handle_supervisor_change(
+        self, employee: Employee, new_supervisor_id: Optional[uuid.UUID]
+    ):
         """Handle changing an employee's supervisor with hierarchy updates.
-        
+
         Args:
             employee: The employee whose supervisor is being changed
             new_supervisor_id: The new supervisor's user_id, or None to remove supervisor
         """
         if not self.employee_repo or not self.hierarchy_repo:
-            raise ValidationError("Employee repository and hierarchy repository required for supervisor changes")
-        
+            raise ValidationError(
+                "Employee repository and hierarchy repository required for supervisor changes"
+            )
+
         from app.services.employee import EmployeeService
-        
+
         employee_service = EmployeeService(
             employee_repo=self.employee_repo,
             employee_hierarchy_repo=self.hierarchy_repo,
-            user_repo=self.user_repo
+            user_repo=self.user_repo,
         )
-        
+
         if new_supervisor_id:
-            new_supervisor = self.employee_repo.get_employee_by_user_id(new_supervisor_id)
+            new_supervisor = self.employee_repo.get_employee_by_user_id(
+                new_supervisor_id
+            )
             if not new_supervisor:
                 raise EmployeeNotFoundError(user_id=new_supervisor_id)
-            
+
             if employee.supervisor_id:
                 employee_service.remove_supervisor_from_employee(employee)
-            
+
             employee_service.assign_supervisor_to_employee(employee, new_supervisor)
         else:
             if employee.supervisor_id:
                 employee_service.remove_supervisor_from_employee(employee)
+
+    def remote_logout_all(self, actor: User, request: RemoteLogoutAllRequest) -> None:
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        user = self.user_repo.get_user_by_id(request.user_id)
+        if not user:
+            raise UserNotFoundError(user_id=request.user_id)
+
+        self.user_repo.rotate_token_key(user)
+        self.session.commit()
+        self.session.refresh(user)
+
+    def remote_reset_password(
+        self, actor: User, request: RemoteResetPasswordRequest
+    ) -> RemoteResetPasswordResponse:
+        if not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        user = self.user_repo.get_user_by_id(request.user_id)
+        if not user:
+            raise UserNotFoundError(user_id=request.user_id)
+
+        new_password = generate_secure_password_with_requirements(16)
+
+        self.user_repo.update_password(user, new_password)
+        self.user_repo.rotate_token_key(user)
+        self.session.commit()
+        self.session.refresh(user)
+
+        return RemoteResetPasswordResponse(new_password=new_password)

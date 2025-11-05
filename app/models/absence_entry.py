@@ -1,34 +1,40 @@
 import uuid
+
 from enum import Enum
+from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Optional
-from datetime import datetime, timezone
 
 from sqlmodel import Field, Relationship, SQLModel
+
 
 if TYPE_CHECKING:
     from .employee import Employee
     from .user import User
 
 
-class TimeEntryType(Enum):
-    Arrival = "arrival"
-    Departure = "departure"
+class AbsenceEntryType(Enum):
+    Sickness = "sickness"
+    Vacation = "vacation"
+    Other = "other"
 
 
-class TimeEntry(SQLModel, table=True):
+class AbsenceEntry(SQLModel, table=True):
     __tablename__: str = "time_entries"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="employees.user_id", index=True)
-    entry_type: TimeEntryType
-    date_time: datetime = Field(index=True)
+    entry_type: AbsenceEntryType
+
+    date_begin: date = Field(index=True)
+    date_end: date = Field(index=True)
+
     created_by: uuid.UUID = Field(foreign_key="users.id", index=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), index=True
     )
 
     employee: "Employee" = Relationship(
-        sa_relationship_kwargs={"foreign_keys": "TimeEntry.user_id"}
+        sa_relationship_kwargs={"foreign_keys": "AbsenceEntry.user_id"}
     )
     creator: "User" = Relationship(
-        sa_relationship_kwargs={"foreign_keys": "TimeEntry.created_by"}
+        sa_relationship_kwargs={"foreign_keys": "AbsenceEntry.created_by"}
     )

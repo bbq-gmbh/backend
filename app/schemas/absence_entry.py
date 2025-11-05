@@ -1,26 +1,28 @@
 import uuid
 
-from datetime import datetime, date
 from typing import Optional
+from datetime import date
 
 from pydantic import BaseModel
 
-from app.models.time_entry import TimeEntryType
+from app.models.absence_entry import AbsenceEntryType
 
 
-class TimeEntryCreate(BaseModel):
+class AbsenceEntryCreate(BaseModel):
     user_id: uuid.UUID
 
-    entry_type: TimeEntryType
-    date_time: datetime
+    entry_type: AbsenceEntryType
+    date_begin: date
+    date_end: date
 
 
-class TimeEntryDelete(BaseModel):
+class AbsenceEntryDelete(BaseModel):
     id: int
 
 
-class TimeEntryGet(BaseModel):
+class AbsenceEntryGet(BaseModel):
     user_id: uuid.UUID
+
     id: Optional[int] = None
     date: Optional[date] = None
     from_date: Optional[date] = None

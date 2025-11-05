@@ -11,14 +11,17 @@ from app.core.exceptions import (
     UserNotAuthenticatedError,
 )
 from app.models.user import User
+from app.repositories.absence_entry import AbsenceEntryRepository
 from app.repositories.employee import EmployeeRepository
 from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 from app.repositories.server_store import ServerStoreRepository
+from app.repositories.time_entry import TimeEntryRepository
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenData, TokenKind
 from app.services.auth import AuthService
 from app.services.employee import EmployeeService
 from app.services.setup import SetupService
+from app.services.time_entry.time_entry import TimeEntryService
 from app.services.user import UserService
 
 bearer_scheme = HTTPBearer()
@@ -67,9 +70,7 @@ def get_user_service(
 ) -> UserService:
     """Provides a user service dependency."""
     return UserService(
-        user_repo=user_repo,
-        employee_repo=employee_repo,
-        hierarchy_repo=hierarchy_repo
+        user_repo=user_repo, employee_repo=employee_repo, hierarchy_repo=hierarchy_repo
     )
 
 
@@ -232,3 +233,46 @@ def get_setup_service(
 
 
 SetupServiceDep = Annotated[SetupService, Depends(get_setup_service)]
+
+
+# Time Entry
+
+
+def get_time_entry_repository(
+    employee_repo: EmployeeRepositoryDep,
+) -> TimeEntryRepository:
+    """Provides a time entry repository dependency."""
+    return TimeEntryRepository(employee_repo=employee_repo)
+
+
+TimeEntryRepositoryDep = Annotated[
+    TimeEntryRepository, Depends(get_time_entry_repository)
+]
+
+
+def get_absence_entry_repository(
+    employee_repo: EmployeeRepositoryDep,
+) -> AbsenceEntryRepository:
+    """Provides an absence entry repository dependency."""
+    return AbsenceEntryRepository(employee_repo=employee_repo)
+
+
+AbsenceEntryRepositoryDep = Annotated[
+    AbsenceEntryRepository, Depends(get_absence_entry_repository)
+]
+
+
+def get_time_entry_service(
+    time_entry_repo: TimeEntryRepositoryDep,
+    absence_entry_repo: AbsenceEntryRepositoryDep,
+    server_store_repo: ServerStoreRepositoryDep,
+) -> TimeEntryService:
+    """Provides a time entry service dependency."""
+    return TimeEntryService(
+        time_entry_repo=time_entry_repo,
+        absence_entry_repo=absence_entry_repo,
+        server_store_repo=server_store_repo,
+    )
+
+
+TimeEntryServiceDep = Annotated[TimeEntryService, Depends(get_time_entry_service)]

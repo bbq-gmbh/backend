@@ -33,5 +33,8 @@ class Settings:
 
     EMPLOYEE_MAX_HIRARCHY_LEVELS: int = 20
 
+    TIME_ENTRY_MAX_ENTRIES_PER_DAY: int = 20
+    TIME_ENTRY_EDIT_MAX_DAYS: int = 7 * 1  # 1 week
+
 
 settings = Settings()

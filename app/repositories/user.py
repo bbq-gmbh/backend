@@ -50,6 +50,91 @@ class UserRepository:
     def get_users_count(self) -> int:
         return self.session.scalar(select(func.count()).select_from(User)) or 0
 
+    def get_users_filtered(
+        self, page: int, page_size: int, is_employee: Optional[bool] = None
+    ) -> list[User]:
+        """Get users with optional employee status filter."""
+        query = select(User)
+
+        if is_employee is not None:
+            if is_employee:
+                query = query.where(User.employee != None)  # type: ignore
+            else:
+                query = query.where(User.employee == None)  # type: ignore
+
+        query = query.limit(page_size).offset(page * page_size)
+        return list(self.session.exec(query).all())
+
+    def get_users_filtered_count(self, is_employee: Optional[bool] = None) -> int:
+        """Count users with optional employee status filter."""
+        query = select(func.count()).select_from(User)
+
+        if is_employee is not None:
+            if is_employee:
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
+            else:
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
+
+        return self.session.scalar(query) or 0
+
+    def search_users_by_username(
+        self, username_query: str, page: int, page_size: int
+    ) -> list[User]:
+        """Search users by username using case-insensitive substring matching."""
+        statement = (
+            select(User)
+            .where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+            .limit(page_size)
+            .offset(page * page_size)
+        )
+        return list(self.session.exec(statement).all())
+
+    def search_users_by_username_count(self, username_query: str) -> int:
+        """Count users matching the username search query."""
+        statement = (
+            select(func.count())
+            .select_from(User)
+            .where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+        )
+        return self.session.scalar(statement) or 0
+
+    def search_users_by_username_filtered(
+        self,
+        username_query: str,
+        page: int,
+        page_size: int,
+        is_employee: Optional[bool] = None,
+    ) -> list[User]:
+        """Search users by username with optional employee status filter."""
+        query = select(User).where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+
+        if is_employee is not None:
+            if is_employee:
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
+            else:
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
+
+        query = query.limit(page_size).offset(page * page_size)
+        return list(self.session.exec(query).all())
+
+    def search_users_by_username_filtered_count(
+        self, username_query: str, is_employee: Optional[bool] = None
+    ) -> int:
+        """Count users matching search query with optional employee status filter."""
+        query = (
+            select(func.count())
+            .select_from(User)
+            .where(User.username.ilike(f"%{username_query}%"))  # type: ignore
+        )  # type: ignore
+
+        if is_employee is not None:
+            if is_employee:
+                query = query.where(User.employee != None)  # type: ignore  # noqa: E711
+            else:
+                query = query.where(User.employee == None)  # type: ignore  # noqa: E711
+
+        return self.session.scalar(query) or 0
+
     def get_user_employee_pairs(
         self, page: int, page_size: int
     ) -> list[tuple[User, Optional[Employee]]]:
