@@ -35,6 +35,10 @@ def get_hours_between(dt1, dt2):
     return (dt1 - dt2).total_seconds() / 3600
 
 
+def get_years_between(dt1, dt2):
+    return (dt1 - dt2).days / 365.25
+
+
 def is_workday(day: date) -> bool:
     return day.weekday() != 6
 
