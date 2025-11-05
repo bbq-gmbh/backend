@@ -228,7 +228,7 @@ def get_time_entries(
     time_entry_get: TimeEntryGet,
 ) -> Optional[TimeEntry] | list[TimeEntry]:
     """Get time entries for an employee by ID, date, or date range."""
-    return None  # type: ignore
+    return time_entry_service.get_time_entries(user, time_entry_get)
 
 
 @router.post(
@@ -277,4 +277,4 @@ def get_absence_entries(
     absence_entry_get: AbsenceEntryGet,
 ) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
     """Get absence entries for an employee by ID, date, or date range."""
-    pass
+    return time_entry_service.get_absence_entries(user, absence_entry_get)
