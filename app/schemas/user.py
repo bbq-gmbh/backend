@@ -1,6 +1,8 @@
-from typing import Optional
 import uuid
-from datetime import datetime
+
+from typing import Optional
+from datetime import date, datetime
+
 from pydantic import BaseModel
 
 
@@ -19,6 +21,7 @@ class UserOnly(BaseModel):
 class UserEmployeeOnly(BaseModel):
     first_name: str
     last_name: str
+    birthday: date
 
 
 class UserInfo(UserOnly):
@@ -28,6 +31,7 @@ class UserInfo(UserOnly):
 class UserEmployeePatch(BaseModel):
     new_first_name: Optional[str] = None
     new_last_name: Optional[str] = None
+    new_birthday: Optional[date] = None
     new_supervisor_id: Optional[uuid.UUID] = None
 
 
