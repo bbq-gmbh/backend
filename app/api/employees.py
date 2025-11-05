@@ -224,11 +224,12 @@ def delete_time_entry(
 )
 def get_time_entries(
     user: CurrentUserDep,
+    employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
     time_entry_get: TimeEntryGet,
 ) -> Optional[TimeEntry] | list[TimeEntry]:
     """Get time entries for an employee by ID, date, or date range."""
-    return time_entry_service.get_time_entries(user, time_entry_get)
+    return time_entry_service.get_time_entries(employee_service, user, time_entry_get)
 
 
 @router.post(
@@ -273,8 +274,11 @@ def delete_absence_entry(
 )
 def get_absence_entries(
     user: CurrentUserDep,
+    employee_service: EmployeeServiceDep,
     time_entry_service: TimeEntryServiceDep,
     absence_entry_get: AbsenceEntryGet,
 ) -> Optional[AbsenceEntry] | list[AbsenceEntry]:
     """Get absence entries for an employee by ID, date, or date range."""
-    return time_entry_service.get_absence_entries(user, absence_entry_get)
+    return time_entry_service.get_absence_entries(
+        employee_service, user, absence_entry_get
+    )
