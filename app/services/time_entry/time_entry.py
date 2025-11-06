@@ -270,7 +270,7 @@ class TimeEntryService:
             raise ResourceNotFoundError()
 
         if not force:
-            if not actor.employee or actor.employee.user_id != absence_entry.id:
+            if not actor.employee or actor.employee.user_id != absence_entry.user_id:
                 raise UserNotAuthorizedError()
 
         if not force and absence_entry.entry_type == AbsenceEntryType.Other:
@@ -299,7 +299,6 @@ class TimeEntryService:
 
         self.absence_entry_repo.delete_absence_entry(absence_entry)
         self.session.commit()
-        self.session.refresh(absence_entry)
 
     @staticmethod
     def _extract_absence_entries(
