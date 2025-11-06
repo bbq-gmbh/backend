@@ -41,8 +41,11 @@ def delete_absence_entry(
     user: CurrentUserDep,
     time_entry_service: TimeEntryServiceDep,
     absence_entry_delete: AbsenceEntryDelete,
+    force: Optional[bool] = Query(False),
 ) -> None:
-    time_entry_service.delete_absence_entry(user, absence_entry_delete)
+    time_entry_service.delete_absence_entry(
+        user, absence_entry_delete, force=force or False
+    )
 
 
 @router.get(
