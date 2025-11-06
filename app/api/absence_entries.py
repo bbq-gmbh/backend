@@ -48,8 +48,8 @@ def delete_absence_entry(
     )
 
 
-@router.get(
-    "/",
+@router.post(
+    "/get",
     name="Get Absence Entries",
     operation_id="getAbsenceEntries",
     status_code=status.HTTP_200_OK,
