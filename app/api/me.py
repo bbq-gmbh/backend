@@ -16,7 +16,9 @@ router = APIRouter()
 def get_current_user(user: CurrentUserDep):
     if user.employee:
         employee = Employee(
-            first_name=user.employee.first_name, last_name=user.employee.last_name
+            first_name=user.employee.first_name,
+            last_name=user.employee.last_name,
+            birthday=user.employee.birthday,
         )
     else:
         employee = None

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 class Employee(BaseModel):
     first_name: str
     last_name: str
+    birthday: date
 
 
 class MeUser(BaseModel):

@@ -32,10 +32,11 @@ def list_users(
     page: Annotated[int, Query(ge=0)],
     page_size: Annotated[int, Query(ge=1, le=200)],
     is_employee: Annotated[bool | None, Query()] = None,
+    superuser: Annotated[bool | None, Query()] = None,
 ) -> PagedResult[list[UserInfo]]:
     """Get a list of all users. Optional filter by employee status."""
     result = user_service.get_visible_user_employee_pairs(
-        user, page, page_size, is_employee
+        user, page, page_size, is_employee, superuser=superuser or False
     )
     return PagedResult(
         page=[

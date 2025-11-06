@@ -101,7 +101,6 @@ class UserService:
 
         self.user_repo.delete_user(user)
         self.session.commit()
-        self.session.refresh(user)
 
     def delete_user_by_id(self, actor: User, user_id: uuid.UUID):
         user = self.user_repo.get_user_by_id(user_id)
@@ -200,9 +199,12 @@ class UserService:
         )
 
     def get_visible_user_employee_pairs(
-        self, actor: User, page: int, page_size: int, is_employee: Optional[bool] = None
+        self, actor: User, page: int, page_size: int, is_employee: Optional[bool] = None, *, superuser: bool = False 
     ) -> PagedResult[list[tuple[User, Optional[Employee]]]]:
-        if actor.is_superuser:
+        if superuser and not actor.is_superuser:
+            raise UserNotAuthorizedError()
+
+        if superuser:
             return self.get_user_employee_pairs(page, page_size, is_employee)
 
         if actor.employee:

@@ -19,7 +19,7 @@ class AbsenceEntryType(Enum):
 
 
 class AbsenceEntry(SQLModel, table=True):
-    __tablename__: str = "time_entries"
+    __tablename__: str = "absence_entries"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="employees.user_id", index=True)
     entry_type: AbsenceEntryType
