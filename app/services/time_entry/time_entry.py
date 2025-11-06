@@ -78,7 +78,7 @@ class TimeEntryService:
         now_tz = datetime.now(tz=timezone).replace(tzinfo=None)
         now_tz_day = now_tz.date()
 
-        if date_time > now_tz:
+        if date_time > (now_tz + timedelta(minutes=5)):
             raise DomainError("Creating time entries in the future is not allowed")
 
         if not force:
