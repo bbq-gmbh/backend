@@ -1,3 +1,4 @@
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from sqlmodel import Field, SQLModel
@@ -8,6 +9,8 @@ class ServerStore(SQLModel, table=True):
     __tablename__: str = "server_store"
     id: int = Field(default=1, primary_key=True)
     timezone: str
+    gleitzeit_warnung_gelb: Optional[int] = Field(default=None)
+    gleitzeit_warnung_rot: Optional[int] = Field(default=None)
 
     @validates("timezone")
     def validate_timezone(self, _key, value):
