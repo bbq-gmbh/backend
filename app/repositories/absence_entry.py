@@ -56,7 +56,7 @@ class AbsenceEntryRepository:
             .where(
                 AbsenceEntry.date_begin <= date_begin, AbsenceEntry.date_end >= date_end
             )
-            .order_by(AbsenceEntry.date_time.asc())  # type: ignore
+            .order_by(AbsenceEntry.date_begin.asc())  # type: ignore
         )
 
         return list(self.session.scalars(exec).all())
