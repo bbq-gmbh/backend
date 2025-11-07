@@ -1,13 +1,13 @@
-""Integration tests for employee deletion with hierarchy healing.""
+"""Integration tests for employee deletion with hierarchy healing."""
 
 from tests.fixtures.user_fixtures import create_test_employee
 
 
 class TestDeleteEmployee:
-    ""Test DELETE /employees/{user_id} endpoint.""
+    """Test DELETE /employees/{user_id} endpoint."""
 
     def test_delete_employee_requires_auth(self, client, session):
-        ""Test that deleting employee requires authentication.""
+        """Test that deleting employee requires authentication."""
         from app.models.user import User
         from app.core.security import hash_password
 
@@ -23,7 +23,7 @@ class TestDeleteEmployee:
         assert response.status_code == 403
 
     def test_delete_employee_requires_superuser(self, client, authenticated_client, session):
-        ""Test that deleting employee requires superuser.""
+        """Test that deleting employee requires superuser."""
         from app.models.user import User
         from app.core.security import hash_password
 
@@ -39,7 +39,7 @@ class TestDeleteEmployee:
         assert response.status_code == 403
 
     def test_delete_employee_heals_simple_hierarchy(self, client, superuser_client, session):
-        ""Test deleting middle employee heals hierarchy: A -> B -> C becomes A -> C.""
+        """Test deleting middle employee heals hierarchy: A -> B -> C becomes A -> C."""
         from app.models.user import User
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
@@ -104,7 +104,7 @@ class TestDeleteEmployee:
         assert user_b.id not in ancestors_after
 
     def test_delete_employee_with_multiple_subordinates(self, client, superuser_client, session):
-        ""Test deleting employee with multiple subordinates heals all of them.""
+        """Test deleting employee with multiple subordinates heals all of them."""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -166,7 +166,7 @@ class TestDeleteEmployee:
             assert user_b.id not in ancestors
 
     def test_delete_top_level_employee_with_subordinates(self, client, superuser_client, session):
-        ""Test deleting top-level employee makes subordinates top-level.""
+        """Test deleting top-level employee makes subordinates top-level."""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -221,7 +221,7 @@ class TestDeleteEmployee:
             assert len(ancestors) == 0
 
     def test_delete_employee_without_subordinates(self, client, superuser_client, session):
-        ""Test deleting leaf employee works correctly.""
+        """Test deleting leaf employee works correctly."""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -269,7 +269,7 @@ class TestDeleteEmployee:
         assert emp_a_check is not None
 
     def test_delete_employee_not_found(self, client, superuser_client, session):
-        ""Test deleting non-existent employee returns 404.""
+        """Test deleting non-existent employee returns 404."""
         import uuid
         
         fake_id = uuid.uuid4()
@@ -278,10 +278,10 @@ class TestDeleteEmployee:
 
 
 class TestDeleteUserWithEmployee:
-    ""Test that deleting a user with an employee also heals the hierarchy.""
+    """Test that deleting a user with an employee also heals the hierarchy."""
 
     def test_delete_user_heals_hierarchy(self, client, superuser_client, session):
-        ""Test that DELETE /users/{id} also heals the hierarchy.""
+        """Test that DELETE /users/{id} also heals the hierarchy."""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
