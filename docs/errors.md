@@ -4,35 +4,10 @@ Comprehensive guide to error handling in fs-backend.
 
 ## Overview
 
-fs-backend uses **domain exceptions** mapped to HTTP status codes via centralized exception handlers. This separates business logic from HTTP concerns.
+fs-backend uses **domain exceptions** mapped to HTTP status codes via centralized exception handlers. This separates business logic from HTTP concerns and provides consistent error responses.
 
----
-
-## Error Flow
-
-```
-1. Request → API Endpoint
-2. Service raises DomainError
-3. FastAPI catches exception
-4. Exception handler maps to HTTP response
-5. Client receives structured error
-```
-
----
-
-## HTTP Status Codes
-
-### Standard Error Codes
-
-| Status | Code | Meaning | Usage |
-|--------|------|---------|-------|
-| 400 | Bad Request | Generic domain error | Catch-all for business rule violations |
-| 401 | Unauthorized | Authentication failed | Invalid/missing token, wrong credentials |
-| 403 | Forbidden | Authorization failed | Valid auth but insufficient permissions (future) |
-| 404 | Not Found | Resource doesn't exist | User not found by ID |
-| 409 | Conflict | Resource conflict | Username already exists |
-| 422 | Unprocessable Entity | Validation error | Input doesn't meet validation rules |
-| 500 | Internal Server Error | Unexpected error | Unhandled exceptions |
+**Exception Module**: `app/core/exceptions.py`  
+**Handler Module**: `app/core/exception_handlers.py`
 
 ---
 
@@ -42,11 +17,438 @@ All errors return consistent JSON structure:
 
 ```json
 {
-  "detail": "Human-readable error message"
+  "detail": "Human-readable error message describing what went wrong"
 }
 ```
 
-### Examples
+**Example Errors**:
+```json
+{"detail": "Invalid username or password"}
+{"detail": "Username must be at least 4 characters"}
+{"detail": "User '550e8400-...' not found"}
+```
+
+---
+
+## HTTP Status Codes
+
+### Standard Error Codes
+
+| Status | Code | Exception Type | Usage |
+|--------|------|----------------|-------|
+| `400` | Bad Request | `ValidationError` | Input validation failed |
+| `401` | Unauthorized | `AuthenticationError` | Invalid/missing token, wrong credentials |
+| `403` | Forbidden | `AuthorizationError` | Insufficient permissions |
+| `404` | Not Found | `ResourceNotFoundError` | Resource doesn't exist |
+| `409` | Conflict | `ResourceConflictError` | Resource already exists |
+| `422` | Unprocessable Entity | Pydantic validation | Invalid request format |
+| `500` | Internal Server Error | Unhandled exception | Server error (should not occur) |
+
+---
+
+## Exception Hierarchy
+
+fs-backend uses a hierarchical exception structure:
+
+```
+DomainError (base)
+├─ ValidationError (400)
+│  ├─ Used when input doesn't meet business rules
+│  └─ e.g., password < 8 characters
+│
+├─ AuthenticationError (401 base)
+│  ├─ InvalidCredentialsError
+│  │  └─ Login with wrong username/password
+│  ├─ InvalidTokenError
+│  │  └─ Token malformed or tampered
+│  ├─ TokenExpiredError
+│  │  └─ Token expired
+│  ├─ TokenRevokedError
+│  │  └─ Token version mismatch (after logout/password change)
+│  └─ UserNotAuthenticatedError
+│     └─ User deleted but token still valid
+│
+├─ AuthorizationError (403)
+│  └─ UserNotAuthorizedError
+│     └─ User lacks permission for operation
+│
+├─ ResourceNotFoundError (404)
+│  ├─ UserNotFoundError
+│  │  └─ User by ID or username not found
+│  └─ EmployeeNotFoundError
+│     └─ Employee profile not found
+│
+└─ ResourceConflictError (409)
+   └─ UserAlreadyExistsError
+      └─ Username already exists in database
+```
+
+---
+
+## Common Error Scenarios
+
+### Authentication Errors
+
+#### "Invalid username or password" (401)
+**Cause**: Incorrect login credentials  
+**Response**:
+```json
+{
+  "detail": "Invalid username or password"
+}
+```
+**Action**: Verify credentials and try again
+
+#### "Invalid authentication credentials" (401)
+**Cause**: Malformed, expired, or tampered JWT token  
+**Response**:
+```json
+{
+  "detail": "Invalid authentication credentials"
+}
+```
+**Action**: Obtain new token via `/auth/login` or `/auth/refresh`
+
+#### "Token has been revoked" (401)
+**Cause**: User changed password or logged out all sessions  
+**Response**:
+```json
+{
+  "detail": "Token has been revoked"
+}
+```
+**Action**: Re-authenticate with current credentials
+
+#### "User not found" (401)
+**Cause**: User deleted but token still valid  
+**Response**:
+```json
+{
+  "detail": "User not found"
+}
+```
+**Action**: Contact administrator
+
+### Validation Errors
+
+#### "Username must be at least 4 characters" (400/422)
+**Cause**: Username too short  
+**Response**:
+```json
+{
+  "detail": "Username must be at least 4 characters"
+}
+```
+**Rules**: 
+- Minimum 4 characters
+- No whitespace
+- Must be unique
+
+#### "Password must be at least 8 characters" (400/422)
+**Cause**: Password too short  
+**Response**:
+```json
+{
+  "detail": "Password must be at least 8 characters"
+}
+```
+**Rules**: Minimum 8 characters
+
+#### "New password must differ from current password" (400)
+**Cause**: Attempting to set same password  
+**Response**:
+```json
+{
+  "detail": "New password must differ from current password"
+}
+```
+**Action**: Choose a different password
+
+### Authorization Errors
+
+#### "Not authorized to perform this action" (403)
+**Cause**: User lacks required permissions  
+**Response**:
+```json
+{
+  "detail": "Not authorized to perform this action"
+}
+```
+**Possible Causes**:
+- Non-superuser trying to delete user
+- Non-supervisor trying to manage subordinate
+- Employee trying to access unrelated employee
+
+**Action**: Request appropriate permissions or use correct account
+
+### Resource Not Found Errors
+
+#### "User '...' not found" (404)
+**Cause**: User ID or username doesn't exist  
+**Response**:
+```json
+{
+  "detail": "User '550e8400-e29b-41d4-a716-446655440000' not found"
+}
+```
+**Action**: Verify ID and try again
+
+#### "Employee '...' not found" (404)
+**Cause**: Employee profile doesn't exist  
+**Response**:
+```json
+{
+  "detail": "Employee '550e8400-e29b-41d4-a716-446655440000' not found"
+}
+```
+**Action**: Create employee profile first
+
+### Conflict Errors
+
+#### "Username already exists" (409)
+**Cause**: Attempting to register with existing username  
+**Response**:
+```json
+{
+  "detail": "Username 'john.doe' already exists"
+}
+```
+**Action**: Choose different username
+
+#### "Employee already exists for this user" (409)
+**Cause**: User already has employee profile  
+**Response**:
+```json
+{
+  "detail": "Employee already exists for user '...'"
+}
+```
+**Action**: Update existing employee instead of creating new
+
+### Request Format Errors
+
+#### Pydantic validation errors (422)
+**Cause**: Malformed request body  
+**Response**:
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "username"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+**Example**: Missing required field in POST body
+
+---
+
+## Debugging Errors
+
+### Enable Debug Logging
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+try:
+    # Your code
+    pass
+except Exception as e:
+    logger.exception("Error occurred:")  # Logs full traceback
+```
+
+### Test Error Responses
+
+```bash
+# Invalid credentials
+curl -X POST http://127.0.0.1:3001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "wrong", "password": "wrong"}'
+# Response: 401 Unauthorized
+
+# User not found
+curl http://127.0.0.1:3001/users/00000000-0000-0000-0000-000000000000 \
+  -H "Authorization: Bearer <token>"
+# Response: 404 Not Found
+
+# Invalid token
+curl http://127.0.0.1:3001/me \
+  -H "Authorization: Bearer invalid-token"
+# Response: 401 Unauthorized
+```
+
+### Parse Detailed Errors
+
+```python
+import httpx
+
+response = httpx.get(
+    "http://127.0.0.1:3001/me",
+    headers={"Authorization": "Bearer invalid"}
+)
+
+if response.status_code != 200:
+    error = response.json()
+    print(f"Status: {response.status_code}")
+    print(f"Detail: {error.get('detail', 'Unknown error')}")
+```
+
+---
+
+## Error Handling Best Practices
+
+### For Developers
+
+1. **Raise appropriate exceptions**:
+   ```python
+   # ✓ Good: Specific exception
+   if not user:
+       raise UserNotFoundError(user_id=id)
+   
+   # ✗ Bad: Generic exception
+   if not user:
+       raise Exception("User not found")
+   ```
+
+2. **Include context in exceptions**:
+   ```python
+   # ✓ Good: Include identifying info
+   raise UserNotFoundError(user_id=user_id)
+   
+   # ✗ Bad: No context
+   raise UserNotFoundError()
+   ```
+
+3. **Validate early**:
+   ```python
+   # ✓ Good: Validate at API layer
+   @router.post("/create")
+   def create(request: UserCreate):  # Pydantic validates
+       ...
+   
+   # ✗ Bad: Validate in service
+   def create(data: dict):
+       if "username" not in data:  # Should use schema
+           ...
+   ```
+
+4. **Don't log sensitive data**:
+   ```python
+   # ✓ Good: Don't log passwords or tokens
+   logger.info(f"Login attempt for user {username}")
+   
+   # ✗ Bad: Logs password
+   logger.info(f"Login with password {password}")
+   ```
+
+### For End Users
+
+1. **Read error messages carefully**: They describe what went wrong
+2. **Check status codes**: 4xx = client error, 5xx = server error
+3. **Verify input**: For 400/422 errors, check request format
+4. **Check permissions**: For 403 errors, ensure you have rights
+5. **Re-authenticate**: For 401 errors, get new token
+
+---
+
+## Troubleshooting Guide
+
+### "500 Internal Server Error"
+**Cause**: Unhandled exception in code  
+**Action**:
+1. Check server logs for traceback
+2. Verify request format
+3. Report issue if consistent
+
+### "422 Unprocessable Entity"
+**Cause**: Request body doesn't match schema  
+**Action**:
+1. Check Swagger docs at /docs
+2. Verify field names and types
+3. Ensure all required fields present
+4. Check for typos
+
+### "401 Unauthorized"
+**Cause**: Missing or invalid authentication  
+**Action**:
+1. Verify token in Authorization header
+2. Check token hasn't expired (refresh if needed)
+3. Verify token format: `Authorization: Bearer <token>`
+4. Re-login if persistent
+
+### "403 Forbidden"
+**Cause**: Insufficient permissions  
+**Action**:
+1. Verify user role (superuser vs regular)
+2. Check hierarchy relationships
+3. Request admin elevation if needed
+4. Use different user account if appropriate
+
+### "404 Not Found"
+**Cause**: Resource doesn't exist  
+**Action**:
+1. Verify resource ID is correct
+2. Create resource if needed
+3. Check if resource was deleted
+4. Verify you have view permissions
+
+### "409 Conflict"
+**Cause**: Resource already exists  
+**Action**:
+1. Use existing resource (don't create new)
+2. Update instead of create
+3. Choose different identifier
+
+---
+
+## Error Handling in Production
+
+### Monitoring & Alerts
+
+Setup alerts for:
+- High rate of 401 errors (brute force attempt)
+- High rate of 403 errors (permission issues)
+- 500 errors (application bugs)
+- Specific error patterns
+
+### Logging
+
+Log these details for debugging:
+- Request path and method
+- User ID (if authenticated)
+- Error type and message
+- Stack trace (on errors)
+- Timestamp
+
+**Don't log**:
+- Passwords
+- Tokens
+- Sensitive personal data
+
+### Rate Limiting
+
+Consider rate limiting on:
+- `/auth/login` - Prevent brute force
+- `/auth/register` - Prevent spam
+- `/auth/refresh` - Prevent token abuse
+
+---
+
+## References
+
+- [Architecture - Exception Hierarchy](architecture.md#exception-hierarchy)
+- [Authentication - Security](authentication.md#security-best-practices)
+- [API - Error Responses](api-spec.md#error-responses)
+- [Configuration - Logging](configuration.md)
+
+---
+
+*Last Updated: November 7, 2025*
 
 **401 Unauthorized**:
 ```json

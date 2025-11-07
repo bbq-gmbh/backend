@@ -11,13 +11,13 @@ from app.core.exceptions import (
     InvalidSupervisorAssignmentError,
     UserNotFoundError,
 )
-from app.models.employee import Employee
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 from app.repositories.user import UserRepository
 from app.schemas.employee import EmployeeCreate
 from app.services.employee import EmployeeService
+from tests.fixtures.user_fixtures import create_test_employee
 
 
 @pytest.fixture
@@ -79,10 +79,17 @@ class TestCreateEmployeeForUser:
     def test_creates_employee_successfully(
         self, session: Session, employee_service: EmployeeService, sample_user: User
     ):
+        from datetime import date
+        from app.models.employee import HourModel
+        
         employee_in = EmployeeCreate(
             user_id=sample_user.id,
             first_name="John",
             last_name="Doe",
+            birthday=date(1990, 1, 1),
+            hour_model=HourModel.e40,
+            pause_time_minutes=30,
+            start_from=date(2020, 1, 1),
         )
         
         employee = employee_service.create_employee_for_user(employee_in)
@@ -95,10 +102,17 @@ class TestCreateEmployeeForUser:
     def test_creates_self_reference_in_hierarchy(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_user: User
     ):
+        from datetime import date
+        from app.models.employee import HourModel
+        
         employee_in = EmployeeCreate(
             user_id=sample_user.id,
             first_name="John",
             last_name="Doe",
+            birthday=date(1990, 1, 1),
+            hour_model=HourModel.e40,
+            pause_time_minutes=30,
+            start_from=date(2020, 1, 1),
         )
         
         employee = employee_service.create_employee_for_user(employee_in)
@@ -110,10 +124,17 @@ class TestCreateEmployeeForUser:
     def test_raises_error_for_nonexistent_user(
         self, session: Session, employee_service: EmployeeService
     ):
+        from datetime import date
+        from app.models.employee import HourModel
+        
         employee_in = EmployeeCreate(
             user_id=uuid.uuid4(),
             first_name="John",
             last_name="Doe",
+            birthday=date(1990, 1, 1),
+            hour_model=HourModel.e40,
+            pause_time_minutes=30,
+            start_from=date(2020, 1, 1),
         )
         
         with pytest.raises(UserNotFoundError):
@@ -122,19 +143,22 @@ class TestCreateEmployeeForUser:
     def test_raises_error_if_employee_already_exists(
         self, session: Session, employee_service: EmployeeService, sample_user: User
     ):
-        employee = Employee(
-            user_id=sample_user.id,
-            first_name="Existing",
-            last_name="Employee",
-        )
+        from tests.fixtures.user_fixtures import create_test_employee
+        from datetime import date
+        from app.models.employee import HourModel
+        
+        employee = create_test_employee(session, sample_user.id, "Existing", "Employee")
         sample_user.employee = employee
-        session.add(employee)
         session.commit()
         
         employee_in = EmployeeCreate(
             user_id=sample_user.id,
             first_name="New",
             last_name="Employee",
+            birthday=date(1990, 1, 1),
+            hour_model=HourModel.e40,
+            pause_time_minutes=30,
+            start_from=date(2020, 1, 1),
         )
         
         with pytest.raises(EmployeeAlreadyExistsError):
@@ -145,8 +169,8 @@ class TestAssignSupervisorToEmployee:
     def test_assigns_supervisor_successfully(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor_emp = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        target_emp = Employee(user_id=sample_users[1].id, first_name="Target", last_name="Employee")
+        supervisor_emp = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        target_emp = create_test_employee(session, sample_users[1].id, "Target", "Employee")
         
         session.add(supervisor_emp)
         session.add(target_emp)
@@ -164,8 +188,8 @@ class TestAssignSupervisorToEmployee:
     def test_creates_hierarchy_paths(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor_emp = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        target_emp = Employee(user_id=sample_users[1].id, first_name="Target", last_name="Employee")
+        supervisor_emp = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        target_emp = create_test_employee(session, sample_users[1].id, "Target", "Employee")
         
         session.add(supervisor_emp)
         session.add(target_emp)
@@ -183,9 +207,9 @@ class TestAssignSupervisorToEmployee:
     def test_replaces_existing_supervisor(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        old_supervisor = Employee(user_id=sample_users[0].id, first_name="Old", last_name="Super")
-        new_supervisor = Employee(user_id=sample_users[1].id, first_name="New", last_name="Super")
-        target_emp = Employee(user_id=sample_users[2].id, first_name="Target", last_name="Employee")
+        old_supervisor = create_test_employee(session, sample_users[0].id, "Old", "Super")
+        new_supervisor = create_test_employee(session, sample_users[1].id, "New", "Super")
+        target_emp = create_test_employee(session, sample_users[2].id, "Target", "Employee")
         
         session.add_all([old_supervisor, new_supervisor, target_emp])
         session.commit()
@@ -210,8 +234,7 @@ class TestAssignSupervisorToEmployee:
     def test_prevents_self_assignment(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        employee = Employee(user_id=sample_users[0].id, first_name="Test", last_name="Employee")
-        session.add(employee)
+        employee = create_test_employee(session, sample_users[0].id, "Test", "Employee")
         session.commit()
         
         hierarchy_repo.add_self_reference(employee)
@@ -223,8 +246,8 @@ class TestAssignSupervisorToEmployee:
     def test_prevents_cycle_creation(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        emp1 = Employee(user_id=sample_users[0].id, first_name="Employee", last_name="One")
-        emp2 = Employee(user_id=sample_users[1].id, first_name="Employee", last_name="Two")
+        emp1 = create_test_employee(session, sample_users[0].id, "Employee", "One")
+        emp2 = create_test_employee(session, sample_users[1].id, "Employee", "Two")
         
         session.add_all([emp1, emp2])
         session.commit()
@@ -243,8 +266,7 @@ class TestAssignSupervisorToEmployee:
     ):
         employees = []
         for i in range(Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS + 2):
-            emp = Employee(user_id=sample_users[i].id, first_name=f"Emp{i}", last_name="Test")
-            session.add(emp)
+            emp = create_test_employee(session, sample_users[i].id, f"Emp{i}", "Test")
             employees.append(emp)
         session.commit()
         
@@ -261,13 +283,12 @@ class TestAssignSupervisorToEmployee:
                 employees[Settings.EMPLOYEE_MAX_HIRARCHY_LEVELS]
             )
 
-
 class TestRemoveSupervisorFromEmployee:
     def test_removes_supervisor_successfully(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        target = Employee(user_id=sample_users[1].id, first_name="Target", last_name="Employee")
+        supervisor = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        target = create_test_employee(session, sample_users[1].id, "Target", "Employee")
         
         session.add_all([supervisor, target])
         session.commit()
@@ -287,8 +308,8 @@ class TestRemoveSupervisorFromEmployee:
     def test_removes_hierarchy_paths(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        target = Employee(user_id=sample_users[1].id, first_name="Target", last_name="Employee")
+        supervisor = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        target = create_test_employee(session, sample_users[1].id, "Target", "Employee")
         
         session.add_all([supervisor, target])
         session.commit()
@@ -310,8 +331,7 @@ class TestRemoveSupervisorFromEmployee:
     def test_handles_no_supervisor_gracefully(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        target = Employee(user_id=sample_users[0].id, first_name="Target", last_name="Employee")
-        session.add(target)
+        target = create_test_employee(session, sample_users[0].id, "Target", "Employee")
         session.commit()
         
         hierarchy_repo.add_self_reference(target)
@@ -324,8 +344,8 @@ class TestWouldCreateCycle:
     def test_detects_direct_cycle(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        emp1 = Employee(user_id=sample_users[0].id, first_name="Emp", last_name="One")
-        emp2 = Employee(user_id=sample_users[1].id, first_name="Emp", last_name="Two")
+        emp1 = create_test_employee(session, sample_users[0].id, "Emp", "One")
+        emp2 = create_test_employee(session, sample_users[1].id, "Emp", "Two")
         
         session.add_all([emp1, emp2])
         session.commit()
@@ -342,9 +362,9 @@ class TestWouldCreateCycle:
     def test_detects_indirect_cycle(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        emp1 = Employee(user_id=sample_users[0].id, first_name="Emp", last_name="One")
-        emp2 = Employee(user_id=sample_users[1].id, first_name="Emp", last_name="Two")
-        emp3 = Employee(user_id=sample_users[2].id, first_name="Emp", last_name="Three")
+        emp1 = create_test_employee(session, sample_users[0].id, "Emp", "One")
+        emp2 = create_test_employee(session, sample_users[1].id, "Emp", "Two")
+        emp3 = create_test_employee(session, sample_users[2].id, "Emp", "Three")
         
         session.add_all([emp1, emp2, emp3])
         session.commit()
@@ -363,8 +383,8 @@ class TestIsSupervisorOf:
     def test_direct_supervision(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        subordinate = Employee(user_id=sample_users[1].id, first_name="Sub", last_name="Ordinate")
+        supervisor = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        subordinate = create_test_employee(session, sample_users[1].id, "Sub", "Ordinate")
         
         session.add_all([supervisor, subordinate])
         session.commit()
@@ -381,9 +401,9 @@ class TestIsSupervisorOf:
     def test_indirect_supervision(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        ceo = Employee(user_id=sample_users[0].id, first_name="CEO", last_name="Boss")
-        manager = Employee(user_id=sample_users[1].id, first_name="Manager", last_name="Middle")
-        employee = Employee(user_id=sample_users[2].id, first_name="Employee", last_name="Low")
+        ceo = create_test_employee(session, sample_users[0].id, "CEO", "Boss")
+        manager = create_test_employee(session, sample_users[1].id, "Manager", "Middle")
+        employee = create_test_employee(session, sample_users[2].id, "Employee", "Low")
         
         session.add_all([ceo, manager, employee])
         session.commit()
@@ -401,8 +421,7 @@ class TestIsSupervisorOf:
     def test_include_self(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        employee = Employee(user_id=sample_users[0].id, first_name="Emp", last_name="One")
-        session.add(employee)
+        employee = create_test_employee(session, sample_users[0].id, "Emp", "One")
         session.commit()
         
         hierarchy_repo.add_self_reference(employee)
@@ -416,8 +435,7 @@ class TestGetHierarchyLevelDifference:
     def test_same_employee_returns_zero(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        employee = Employee(user_id=sample_users[0].id, first_name="Emp", last_name="One")
-        session.add(employee)
+        employee = create_test_employee(session, sample_users[0].id, "Emp", "One")
         session.commit()
         
         hierarchy_repo.add_self_reference(employee)
@@ -429,8 +447,8 @@ class TestGetHierarchyLevelDifference:
     def test_direct_supervision_difference(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        supervisor = Employee(user_id=sample_users[0].id, first_name="Super", last_name="Visor")
-        subordinate = Employee(user_id=sample_users[1].id, first_name="Sub", last_name="Ordinate")
+        supervisor = create_test_employee(session, sample_users[0].id, "Super", "Visor")
+        subordinate = create_test_employee(session, sample_users[1].id, "Sub", "Ordinate")
         
         session.add_all([supervisor, subordinate])
         session.commit()
@@ -447,8 +465,8 @@ class TestGetHierarchyLevelDifference:
     def test_unrelated_employees_returns_none(
         self, session: Session, employee_service: EmployeeService, hierarchy_repo: EmployeeHierarchyRepository, sample_users: list[User]
     ):
-        emp1 = Employee(user_id=sample_users[0].id, first_name="Emp", last_name="One")
-        emp2 = Employee(user_id=sample_users[1].id, first_name="Emp", last_name="Two")
+        emp1 = create_test_employee(session, sample_users[0].id, "Emp", "One")
+        emp2 = create_test_employee(session, sample_users[1].id, "Emp", "Two")
         
         session.add_all([emp1, emp2])
         session.commit()
@@ -465,7 +483,7 @@ class TestGetEmployeeByUserId:
     def test_returns_existing_employee(
         self, session: Session, employee_service: EmployeeService, sample_users: list[User]
     ):
-        employee = Employee(user_id=sample_users[0].id, first_name="Test", last_name="Employee")
+        employee = create_test_employee(session, sample_users[0].id, "Test", "Employee")
         sample_users[0].employee = employee
         session.add(employee)
         session.commit()

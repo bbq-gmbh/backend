@@ -1,13 +1,14 @@
-"""Integration tests for employee deletion with hierarchy healing."""
+""Integration tests for employee deletion with hierarchy healing.""
+
+from tests.fixtures.user_fixtures import create_test_employee
 
 
 class TestDeleteEmployee:
-    """Test DELETE /employees/{user_id} endpoint."""
+    ""Test DELETE /employees/{user_id} endpoint.""
 
     def test_delete_employee_requires_auth(self, client, session):
-        """Test that deleting employee requires authentication."""
+        ""Test that deleting employee requires authentication.""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
 
         user = User(username="todelete", password_hash=hash_password("password123"))
@@ -15,17 +16,15 @@ class TestDeleteEmployee:
         session.commit()
         session.refresh(user)
 
-        employee = Employee(user_id=user.id, first_name="To", last_name="Delete")
-        session.add(employee)
+        create_test_employee(session, user.id, "To", "Delete")
         session.commit()
 
         response = client.delete(f"/employees/{user.id}")
         assert response.status_code == 403
 
     def test_delete_employee_requires_superuser(self, client, authenticated_client, session):
-        """Test that deleting employee requires superuser."""
+        ""Test that deleting employee requires superuser.""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
 
         user = User(username="todelete2", password_hash=hash_password("password123"))
@@ -33,17 +32,15 @@ class TestDeleteEmployee:
         session.commit()
         session.refresh(user)
 
-        employee = Employee(user_id=user.id, first_name="To", last_name="Delete")
-        session.add(employee)
+        create_test_employee(session, user.id, "To", "Delete")
         session.commit()
 
         response = authenticated_client.delete(f"/employees/{user.id}")
         assert response.status_code == 403
 
     def test_delete_employee_heals_simple_hierarchy(self, client, superuser_client, session):
-        """Test deleting middle employee heals hierarchy: A -> B -> C becomes A -> C."""
+        ""Test deleting middle employee heals hierarchy: A -> B -> C becomes A -> C.""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 
@@ -56,10 +53,9 @@ class TestDeleteEmployee:
         session.add_all([user_a, user_b, user_c])
         session.commit()
 
-        emp_a = Employee(user_id=user_a.id, first_name="Employee", last_name="A")
-        emp_b = Employee(user_id=user_b.id, first_name="Employee", last_name="B", supervisor_id=user_a.id)
-        emp_c = Employee(user_id=user_c.id, first_name="Employee", last_name="C", supervisor_id=user_b.id)
-        session.add_all([emp_a, emp_b, emp_c])
+        emp_a = create_test_employee(session, user_a.id, "Employee", "A")
+        emp_b = create_test_employee(session, user_b.id, "Employee", "B", supervisor_id=user_a.id)
+        emp_c = create_test_employee(session, user_c.id, "Employee", "C", supervisor_id=user_b.id)
         session.commit()
 
         # Set up hierarchy
@@ -108,7 +104,7 @@ class TestDeleteEmployee:
         assert user_b.id not in ancestors_after
 
     def test_delete_employee_with_multiple_subordinates(self, client, superuser_client, session):
-        """Test deleting employee with multiple subordinates heals all of them."""
+        ""Test deleting employee with multiple subordinates heals all of them.""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -125,11 +121,11 @@ class TestDeleteEmployee:
         session.add_all([user_a, user_b, user_c, user_d, user_e])
         session.commit()
 
-        emp_a = Employee(user_id=user_a.id, first_name="Emp", last_name="A")
-        emp_b = Employee(user_id=user_b.id, first_name="Emp", last_name="B", supervisor_id=user_a.id)
-        emp_c = Employee(user_id=user_c.id, first_name="Emp", last_name="C", supervisor_id=user_b.id)
-        emp_d = Employee(user_id=user_d.id, first_name="Emp", last_name="D", supervisor_id=user_b.id)
-        emp_e = Employee(user_id=user_e.id, first_name="Emp", last_name="E", supervisor_id=user_b.id)
+        emp_a = create_test_employee(session, user_a.id, "Emp", "A")
+        emp_b = create_test_employee(session, user_b.id, "Emp", "B", supervisor_id=user_a.id)
+        emp_c = create_test_employee(session, user_c.id, "Emp", "C", supervisor_id=user_b.id)
+        emp_d = create_test_employee(session, user_d.id, "Emp", "D", supervisor_id=user_b.id)
+        emp_e = create_test_employee(session, user_e.id, "Emp", "E", supervisor_id=user_b.id)
         session.add_all([emp_a, emp_b, emp_c, emp_d, emp_e])
         session.commit()
 
@@ -170,7 +166,7 @@ class TestDeleteEmployee:
             assert user_b.id not in ancestors
 
     def test_delete_top_level_employee_with_subordinates(self, client, superuser_client, session):
-        """Test deleting top-level employee makes subordinates top-level."""
+        ""Test deleting top-level employee makes subordinates top-level.""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -185,9 +181,9 @@ class TestDeleteEmployee:
         session.add_all([user_a, user_b, user_c])
         session.commit()
 
-        emp_a = Employee(user_id=user_a.id, first_name="Top", last_name="Level")
-        emp_b = Employee(user_id=user_b.id, first_name="Sub", last_name="B", supervisor_id=user_a.id)
-        emp_c = Employee(user_id=user_c.id, first_name="Sub", last_name="C", supervisor_id=user_a.id)
+        emp_a = create_test_employee(session, user_a.id, "Top", "Level")
+        emp_b = create_test_employee(session, user_b.id, "Sub", "B", supervisor_id=user_a.id)
+        emp_c = create_test_employee(session, user_c.id, "Sub", "C", supervisor_id=user_a.id)
         session.add_all([emp_a, emp_b, emp_c])
         session.commit()
 
@@ -225,7 +221,7 @@ class TestDeleteEmployee:
             assert len(ancestors) == 0
 
     def test_delete_employee_without_subordinates(self, client, superuser_client, session):
-        """Test deleting leaf employee works correctly."""
+        ""Test deleting leaf employee works correctly.""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -239,8 +235,8 @@ class TestDeleteEmployee:
         session.add_all([user_a, user_b])
         session.commit()
 
-        emp_a = Employee(user_id=user_a.id, first_name="Boss", last_name="A")
-        emp_b = Employee(user_id=user_b.id, first_name="Leaf", last_name="B", supervisor_id=user_a.id)
+        emp_a = create_test_employee(session, user_a.id, "Boss", "A")
+        emp_b = create_test_employee(session, user_b.id, "Leaf", "B", supervisor_id=user_a.id)
         session.add_all([emp_a, emp_b])
         session.commit()
 
@@ -273,7 +269,7 @@ class TestDeleteEmployee:
         assert emp_a_check is not None
 
     def test_delete_employee_not_found(self, client, superuser_client, session):
-        """Test deleting non-existent employee returns 404."""
+        ""Test deleting non-existent employee returns 404.""
         import uuid
         
         fake_id = uuid.uuid4()
@@ -282,10 +278,10 @@ class TestDeleteEmployee:
 
 
 class TestDeleteUserWithEmployee:
-    """Test that deleting a user with an employee also heals the hierarchy."""
+    ""Test that deleting a user with an employee also heals the hierarchy.""
 
     def test_delete_user_heals_hierarchy(self, client, superuser_client, session):
-        """Test that DELETE /users/{id} also heals the hierarchy."""
+        ""Test that DELETE /users/{id} also heals the hierarchy.""
         from app.models.user import User
         from app.models.employee import Employee
         from app.core.security import hash_password
@@ -300,9 +296,9 @@ class TestDeleteUserWithEmployee:
         session.add_all([user_a, user_b, user_c])
         session.commit()
 
-        emp_a = Employee(user_id=user_a.id, first_name="User", last_name="A")
-        emp_b = Employee(user_id=user_b.id, first_name="User", last_name="B", supervisor_id=user_a.id)
-        emp_c = Employee(user_id=user_c.id, first_name="User", last_name="C", supervisor_id=user_b.id)
+        emp_a = create_test_employee(session, user_a.id, "User", "A")
+        emp_b = create_test_employee(session, user_b.id, "User", "B", supervisor_id=user_a.id)
+        emp_c = create_test_employee(session, user_c.id, "User", "C", supervisor_id=user_b.id)
         session.add_all([emp_a, emp_b, emp_c])
         session.commit()
 

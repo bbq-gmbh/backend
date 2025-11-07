@@ -12,17 +12,13 @@ class TestGetEmployeeHierarchy:
         assert response.status_code == 403
 
     def test_get_own_hierarchy_as_employee(
-        self, client, authenticated_client, created_user
+        self, client, authenticated_client, created_user, session
     ):
         """Test getting own hierarchy as an employee user."""
-        # Create an employee for the user
-        employee_data = {
-            "user_id": str(created_user.id),
-            "first_name": "Test",
-            "last_name": "Employee",
-        }
-        emp_response = authenticated_client.post("/employees", json=employee_data)
-        assert emp_response.status_code == 201
+        from tests.fixtures.user_fixtures import create_test_employee
+        # Create an employee for the user using the helper
+        create_test_employee(session, created_user.id, "Test", "Employee")
+        session.commit()
 
         # Get hierarchy
         response = authenticated_client.get(f"/employees/{created_user.id}/hierarchy")
@@ -43,8 +39,8 @@ class TestGetEmployeeHierarchy:
         """Test superuser can get hierarchy of any user."""
         # Create a test user with employee
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
+        from tests.fixtures.user_fixtures import create_test_employee
 
         test_user = User(
             username="hierarchytest",
@@ -54,12 +50,7 @@ class TestGetEmployeeHierarchy:
         session.commit()
         session.refresh(test_user)
 
-        employee = Employee(
-            user_id=test_user.id,
-            first_name="Hierarchy",
-            last_name="Test",
-        )
-        session.add(employee)
+        create_test_employee(session, test_user.id, "Hierarchy", "Test")
         session.commit()
 
         # Superuser gets this user's hierarchy
@@ -76,8 +67,8 @@ class TestGetEmployeeHierarchy:
         """Test non-superuser cannot get other user's hierarchy."""
         # Create another user with employee
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
+        from tests.fixtures.user_fixtures import create_test_employee
 
         other_user = User(
             username="otheruser",
@@ -87,13 +78,7 @@ class TestGetEmployeeHierarchy:
         session.commit()
         session.refresh(other_user)
 
-        employee = Employee(
-            user_id=other_user.id,
-            first_name="Other",
-            last_name="User",
-        )
-        session.add(employee)
-        session.commit()
+        create_test_employee(session, other_user.id, "Other", "User")
 
         # Try to get other user's hierarchy (should fail)
         response = authenticated_client.get(
@@ -119,9 +104,9 @@ class TestRebuildHierarchy:
         """Test successful hierarchy rebuild."""
         # Create a hierarchy of employees
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         # Initialize hierarchy repo
         hierarchy_repo = EmployeeHierarchyRepository(session)
@@ -135,30 +120,15 @@ class TestRebuildHierarchy:
         session.commit()
 
         # Create employees with hierarchy
-        boss_emp = Employee(
-            user_id=boss.id, first_name="Boss", last_name="Person", supervisor_id=None
-        )
-        session.add(boss_emp)
+        boss_emp = create_test_employee(session, boss.id, "Boss", "Person")
         session.commit()
         hierarchy_repo.add_self_reference(boss_emp)
 
-        manager_emp = Employee(
-            user_id=manager.id,
-            first_name="Manager",
-            last_name="Person",
-            supervisor_id=boss.id,
-        )
-        session.add(manager_emp)
+        manager_emp = create_test_employee(session, manager.id, "Manager", "Person", supervisor_id=boss.id)
         session.commit()
         hierarchy_repo.add_self_reference(manager_emp)
 
-        worker_emp = Employee(
-            user_id=worker.id,
-            first_name="Worker",
-            last_name="Person",
-            supervisor_id=manager.id,
-        )
-        session.add(worker_emp)
+        worker_emp = create_test_employee(session, worker.id, "Worker", "Person", supervisor_id=manager.id)
         session.commit()
         hierarchy_repo.add_self_reference(worker_emp)
 
