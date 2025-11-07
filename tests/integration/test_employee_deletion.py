@@ -41,6 +41,7 @@ class TestDeleteEmployee:
     def test_delete_employee_heals_simple_hierarchy(self, client, superuser_client, session):
         """Test deleting middle employee heals hierarchy: A -> B -> C becomes A -> C."""
         from app.models.user import User
+        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
 
