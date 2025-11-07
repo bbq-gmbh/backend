@@ -1,102 +1,663 @@
 # Development Guide
 
-Guide for contributing to and developing the fs-backend project.
+Comprehensive guide for contributing to and developing fs-backend.
+
+## Project Overview
+
+**Tech Stack**: FastAPI, SQLModel, SQLite (dev), PostgreSQL (prod)  
+**Python Version**: 3.13+  
+**Package Manager**: uv
+
+**Key Principles**:
+- Clean, layered architecture
+- Domain-driven exceptions
+- Comprehensive testing
+- Type safety with Python type hints
+- Clear separation of concerns
+
+---
+
+## Development Environment Setup
+
+### Initial Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd backend
+
+# Install dependencies with uv
+uv sync --all-groups
+
+# Create environment file
+cp .env.template .env
+
+# Start development server
+uv run fastapi dev app/main.py --port 3001
+```
+
+### Verification
+
+```bash
+# Check server is running
+curl http://127.0.0.1:3001/
+# Response: 200 OK
+
+# Check Swagger docs
+open http://127.0.0.1:3001/docs
+```
+
+---
+
+## Code Organization
+
+### Layered Architecture
+
+```
+┌─────────────────────────────────────┐
+│    API Layer (app/api/)             │  HTTP handling
+├─────────────────────────────────────┤
+│    Service Layer (app/services/)    │  Business logic
+├─────────────────────────────────────┤
+│  Repository Layer (app/repositories/)  │  Data access
+├─────────────────────────────────────┤
+│   Domain Layer (models, schemas)    │  Entities, DTOs
+├─────────────────────────────────────┤
+│  Core & Config (core, config)       │  Security, settings
+└─────────────────────────────────────┘
+```
+
+### File Structure
+
+```
+app/
+├── main.py              # Entry point, app initialization
+├── api/
+│   ├── api.py           # Route registration
+│   ├── auth.py          # Auth endpoints
+│   ├── users.py         # User endpoints
+│   ├── employees.py     # Employee endpoints
+│   ├── time_entries.py  # Time tracking endpoints
+│   ├── absence_entries.py
+│   ├── me.py            # Current user
+│   ├── dependencies.py  # DI setup
+│   └── ...
+├── services/
+│   ├── auth.py          # Token service
+│   ├── user.py          # User service
+│   ├── employee.py      # Employee service
+│   └── time_entry/      # Time entry services
+├── repositories/
+│   ├── user.py
+│   ├── employee.py
+│   ├── time_entry.py
+│   └── ...
+├── models/              # SQLModel entities
+├── schemas/             # Pydantic DTOs
+├── core/
+│   ├── exceptions.py    # Domain exceptions
+│   ├── security.py      # JWT, password utils
+│   └── exception_handlers.py
+└── config/
+    ├── settings.py      # Environment settings
+    └── database.py      # Database engine
+```
+
+---
 
 ## Development Principles
 
-### 1. Code Style & Standards
+### 1. Layer Responsibilities
 
-**Follow PEP 8** with these specifics:
-- Line length: 88 characters (Black default)
-- Use type hints for all function signatures
-- Docstrings for public functions/classes (Google style)
-- Prefer explicit over implicit
+**API Layer** (`app/api/`):
+- ✅ Handle HTTP (routes, status codes, headers)
+- ✅ Validate request format (Pydantic schemas)
+- ✅ Call service methods
+- ✅ Return HTTP responses
+- ❌ Never contain business logic
+- ❌ Never directly access repositories
 
-**Example**:
-```python
-from typing import Optional
+**Service Layer** (`app/services/`):
+- ✅ Implement business logic
+- ✅ Orchestrate multiple repository calls
+- ✅ Enforce business rules
+- ✅ Control transactions (commit/rollback)
+- ✅ Raise domain exceptions
+- ❌ Never return HTTP status codes
+- ❌ Never access HTTP context
 
-def get_user_by_id(user_id: str, session: Session) -> Optional[User]:
-    """
-    Retrieve a user by their unique identifier.
-    
-    Args:
-        user_id: UUID string of the user
-        session: Database session
-        
-    Returns:
-        User object if found, None otherwise
-    """
-    return session.query(User).filter(User.id == user_id).first()
-```
+**Repository Layer** (`app/repositories/`):
+- ✅ Database queries only
+- ✅ Return entities or lists
+- ✅ Provide query methods
+- ❌ Never commit transactions
+- ❌ Never contain business logic
 
-### 2. Layer Responsibilities
+### 2. Error Handling
 
-**API Layer** (`src/api/`):
-- Handle HTTP concerns only
-- Validate request format (Pydantic handles this)
-- Call service methods
-- Return appropriate HTTP responses
-- **Never** contain business logic
-
-**Service Layer** (`src/services/`):
-- Implement business logic
-- Orchestrate multiple repository calls
-- Enforce business rules
-- Control transactions (commit/rollback)
-- Raise domain exceptions
-
-**Repository Layer** (`src/repositories/`):
-- Database queries only
-- Return entities or query results
-- **Never** commit transactions
-- **Never** contain business logic
-
-### 3. Error Handling
-
-**Use domain exceptions** (defined in `src/core/exceptions.py`):
+**Use domain exceptions**, not HTTP exceptions in services:
 
 ```python
-# ❌ Bad: Raising HTTPException in service
+# ❌ Bad: HTTPException in service
 from fastapi import HTTPException
 
 def create_user(username: str) -> User:
     if user_exists(username):
         raise HTTPException(status_code=409, detail="Username exists")
 
-# ✅ Good: Raising domain exception
-from src.core.exceptions import UserAlreadyExistsError
+# ✅ Good: Domain exception
+from app.core.exceptions import UserAlreadyExistsError
 
 def create_user(username: str) -> User:
     if user_exists(username):
-        raise UserAlreadyExistsError(f"Username '{username}' already exists")
+        raise UserAlreadyExistsError(username)
 ```
 
-Exception handlers in `main.py` map domain exceptions to HTTP responses.
+**Mapping happens in handler**:
+```python
+# app/core/exception_handlers.py
+@app.exception_handler(UserAlreadyExistsError)
+async def user_exists_handler(request: Request, exc: UserAlreadyExistsError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+```
 
-### 4. Transaction Management
+**Benefits**:
+- Business logic isolated from HTTP
+- Easy to test (no HTTP dependencies)
+- Consistent error responses
+- Easy to change status codes
 
-**Services control transactions**:
+### 3. Transaction Management
+
+**Services control transactions**, repositories don't:
 
 ```python
-# ✅ Good: Service commits
+# ✅ Good: Service manages commit
 def create_user(data: UserCreate, session: Session) -> User:
-    # Check business rules
+    # Validate
     if self.user_repo.get_by_username(data.username, session):
         raise UserAlreadyExistsError()
     
-    # Create entity
+    # Create
     user = User(
         username=data.username,
-        hashed_password=hash_password(data.password)
+        password_hash=hash_password(data.password)
     )
     
-    # Repository adds to session
+    # Repository adds to session (no commit)
     self.user_repo.add(user, session)
     
-    # Service commits
+    # Service commits (transaction boundary)
     session.commit()
     session.refresh(user)
+    
+    return user
+```
+
+**Benefits**:
+- Atomic operations across multiple entities
+- Testable (can rollback in tests)
+- Clear transaction boundaries
+
+### 4. Type Hints
+
+**Use type hints everywhere**:
+
+```python
+# ✅ Good: Full type hints
+from typing import Optional
+
+def get_user_by_id(
+    user_id: uuid.UUID,
+    session: Session
+) -> Optional[User]:
+    """Retrieve user by ID."""
+    return session.get(User, user_id)
+
+# ❌ Bad: No type hints
+def get_user_by_id(user_id, session):
+    return session.get(User, user_id)
+```
+
+**Benefits**:
+- IDE autocomplete
+- Type checker support (mypy, Pylance)
+- Self-documenting code
+- Catches bugs early
+
+### 5. Docstrings
+
+**Document public functions** (Google style):
+
+```python
+def authenticate_user(
+    username: str,
+    password: str
+) -> Optional[User]:
+    """
+    Authenticate user with username and password.
+    
+    Args:
+        username: User's login name
+        password: User's password (plain text)
+        
+    Returns:
+        User object if credentials valid, None otherwise
+        
+    Raises:
+        ValueError: If password empty or None
+    """
+    if not password:
+        raise ValueError("Password cannot be empty")
+    
+    user = self.user_repo.get_by_username(username)
+    if not user:
+        return None
+    
+    if verify_password(password, user.password_hash):
+        return user
+    
+    return None
+```
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=app --cov-report=html
+
+# Run specific test file
+uv run pytest tests/unit/test_user_service.py
+
+# Run with verbose output
+uv run pytest -v
+
+# Run matching pattern
+uv run pytest -k "test_create_user"
+```
+
+### Test Structure
+
+```
+tests/
+├── unit/
+│   ├── test_services/
+│   │   └── test_auth_service.py
+│   └── test_repositories/
+│       └── test_employee_hierarchy.py
+├── integration/
+│   ├── test_auth_endpoints.py
+│   └── test_user_endpoints.py
+└── fixtures/
+    └── user_fixtures.py
+```
+
+### Writing Tests
+
+**Unit Test Example**:
+```python
+# tests/unit/test_services/test_auth_service.py
+import pytest
+from app.services.auth import AuthService
+from app.models.user import User
+
+def test_issue_token_pair(auth_service: AuthService, user: User):
+    """Test token pair generation."""
+    access_token, refresh_token = auth_service.issue_token_pair(user)
+    
+    assert access_token
+    assert refresh_token
+    assert access_token != refresh_token
+```
+
+**Integration Test Example**:
+```python
+# tests/integration/test_auth_endpoints.py
+def test_login_success(client: TestClient):
+    """Test successful login endpoint."""
+    response = client.post(
+        "/auth/login",
+        json={"username": "testuser", "password": "testpass123"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+```
+
+---
+
+## Code Quality Tools
+
+### Linting & Formatting
+
+```bash
+# Check code with Ruff
+uv run ruff check app/
+
+# Auto-fix issues
+uv run ruff check --fix app/
+
+# Format code
+uv run ruff format app/
+```
+
+### Type Checking
+
+```bash
+# Check types with mypy
+uv run mypy app/
+
+# With strict mode
+uv run mypy --strict app/
+```
+
+### Pre-commit Hooks
+
+```bash
+# Install pre-commit
+uv add --dev pre-commit
+
+# Configure hooks
+cat > .pre-commit-config.yaml << 'EOF'
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+EOF
+
+# Install hook
+pre-commit install
+```
+
+---
+
+## Adding New Features
+
+### Example: Add Email Field to User
+
+**1. Update Model** (`app/models/user.py`):
+```python
+class User(SQLModel, table=True):
+    # ... existing fields ...
+    email: str = Field(index=True, unique=True)
+```
+
+**2. Update Schema** (`app/schemas/user.py`):
+```python
+class UserCreate(SQLModel):
+    username: str
+    password: str
+    email: str  # ← New field
+```
+
+**3. Update Service** (`app/services/user.py`):
+```python
+def create_user(self, user_in: UserCreate) -> User:
+    self._validate_username(user_in.username)
+    self._validate_password(user_in.password)
+    self._validate_email(user_in.email)  # ← New validation
+    
+    if self.user_repo.get_by_username(user_in.username):
+        raise UserAlreadyExistsError()
+    
+    if self.user_repo.get_by_email(user_in.email):  # ← Check unique
+        raise EmailAlreadyExistsError()
+    
+    user = self.user_repo.create_user(user_in)
+    self.session.commit()
+    return user
+```
+
+**4. Update Repository** (`app/repositories/user.py`):
+```python
+def get_by_email(self, email: str) -> Optional[User]:
+    return self.session.query(User).filter(User.email == email).first()
+```
+
+**5. Update API** (`app/api/users.py`):
+```python
+# UserCreate schema auto-validates new field
+@router.post("/", response_model=UserInfo)
+def create_user(user_in: UserCreate, user_service: UserServiceDep):
+    return user_service.create_user(user_in)
+```
+
+**6. Add Tests**:
+```python
+def test_create_user_with_email(user_service: UserService):
+    result = user_service.create_user(UserCreate(
+        username="test",
+        password="pass123",
+        email="test@example.com"
+    ))
+    assert result.email == "test@example.com"
+```
+
+**7. Database Synchronization**:
+```bash
+# Restart server (SQLAlchemy auto-creates/updates on startup)
+uv run fastapi dev app/main.py --port 3001
+```
+
+---
+
+## Git Workflow
+
+### Branching Strategy
+
+```
+main (production)
+├── dev (development)
+│   ├── feature/user-authentication
+│   ├── feature/employee-hierarchy
+│   └── bugfix/time-entry-validation
+```
+
+### Creating a Feature Branch
+
+```bash
+# Create and switch to new branch
+git checkout -b feature/my-feature
+
+# Make changes and test
+uv run pytest
+
+# Commit changes
+git add .
+git commit -m "Add: my feature description"
+
+# Push to remote
+git push origin feature/my-feature
+
+# Create pull request on GitHub
+# - Describe changes
+# - Reference related issues
+# - Wait for code review
+```
+
+### Commit Message Style
+
+```
+[type]: [description]
+
+[optional body]
+
+- [optional] Related issues: #123
+
+Types: add, fix, refactor, docs, test, perf
+```
+
+**Examples**:
+```
+add: employee hierarchy endpoint
+fix: token validation edge case
+refactor: split user service methods
+docs: update setup guide
+```
+
+---
+
+## Debugging
+
+### Using print/logging
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def create_user(data: UserCreate):
+    logger.info(f"Creating user: {data.username}")
+    
+    try:
+        user = self.user_repo.create_user(data)
+        logger.info(f"User created: {user.id}")
+        return user
+    except Exception as e:
+        logger.exception("Failed to create user")
+        raise
+```
+
+### Using debugger
+
+```python
+# Add breakpoint
+def authenticate_user(username: str, password: str):
+    breakpoint()  # ← Stops here
+    user = self.user_repo.get_by_username(username)
+    # ...
+```
+
+### Using FastAPI test client
+
+```python
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+# Test endpoint
+response = client.post("/auth/login", json={
+    "username": "test",
+    "password": "pass"
+})
+
+print(response.status_code)
+print(response.json())
+```
+
+---
+
+## Common Development Tasks
+
+### Adding a new endpoint
+
+1. Create route in `app/api/module.py`
+2. Create schema in `app/schemas/module.py` if needed
+3. Add service method in `app/services/module.py`
+4. Add repository method if database access needed
+5. Add tests in `tests/integration/`
+6. Run full test suite
+
+### Modifying a model
+
+1. Update model in `app/models/model.py`
+2. Update schemas if needed
+3. Update service/repository code
+4. Restart server (schema auto-syncs)
+5. Test thoroughly
+
+### Fixing a bug
+
+1. Create test that reproduces bug
+2. Fix bug in code
+3. Verify test passes
+4. Ensure no other tests break
+5. Commit with reference to issue
+
+---
+
+## Performance Tips
+
+1. **Use indexes** on frequently queried fields
+2. **Eager load relationships** to avoid N+1 queries
+3. **Paginate list endpoints** (limit/offset)
+4. **Use database LIMIT/OFFSET** not Python slicing
+5. **Cache employee hierarchy** for frequently accessed supervisors
+
+---
+
+## Security Checklist
+
+When adding features:
+- [ ] Validate all inputs
+- [ ] Check authorization (user permissions)
+- [ ] Use parameterized queries (SQLModel does this)
+- [ ] Don't log sensitive data
+- [ ] Don't expose database errors
+- [ ] Use HTTPS in production
+- [ ] Encrypt sensitive data at rest
+
+---
+
+## Deployment
+
+### Before Deploying
+
+```bash
+# Run full test suite
+uv run pytest --cov=app
+
+# Check code quality
+uv run ruff check app/
+
+# Type check
+uv run mypy app/
+
+# Review changes
+git log --oneline -5
+```
+
+### Deployment Process
+
+```bash
+# Merge to main
+git merge --no-ff feature/my-feature
+git push origin main
+
+# Build and deploy (your CI/CD pipeline)
+# GitHub Actions, Docker, etc.
+
+# Verify in production
+curl https://api.example.com/
+```
+
+---
+
+## References
+
+- [Architecture Overview](architecture.md)
+- [API Specification](api-spec.md)
+- [Database Schema](database.md)
+- [Error Handling](errors.md)
+- [FastAPI Best Practices](https://fastapi.tiangolo.com/deployment/concepts/)
+- [SQLModel Documentation](https://sqlmodel.tiangolo.com/)
+
+---
+
+*Last Updated: November 7, 2025*
     
     return user
 ```

@@ -198,7 +198,374 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 
 ## Token Invalidation Mechanism
 
-### The Token Version Strategy
+### Rotating Token Key Strategy
+
+Instead of maintaining a token blacklist (which requires Redis or database lookup), fs-backend uses a **rotating token version** stored on the User model.
+
+**How it works**:
+1. Each User has a `token_key` UUID field
+2. When a token is issued, the current `token_key` value is embedded in the JWT
+3. On every token validation:
+   ```python
+   user = db.get_user_by_id(token.sub)
+   if token.key != user.token_key:
+       raise TokenRevokedError()  # Token is revoked
+   ```
+4. To invalidate all tokens, rotate the key:
+   ```python
+   user.token_key = uuid.uuid4()
+   db.commit()
+   ```
+
+**When tokens are invalidated**:
+- User calls `POST /auth/logout-all` → all tokens revoked
+- User changes password via `POST /auth/change-password` → all tokens revoked
+- Admin remotely revokes user session
+
+**Advantages**:
+- ✅ No external state (Redis) required
+- ✅ Stateless architecture maintained
+- ✅ O(1) validation (just a UUID comparison)
+- ✅ Atomic operation (single database update)
+- ✅ No token blacklist management
+
+### Remote Logout & Password Reset
+
+**Remote Logout All**:
+```python
+@router.post("/remote-logout-all")
+def remote_logout_all(
+    current_user: CurrentUserDep,  # Admin
+    request: RemoteLogoutAllRequest,  # { user_id: UUID }
+    user_service: UserServiceDep,
+):
+    # Admin invalidates all sessions for a user
+    user_service.remote_logout_all(current_user, request)
+    # Rotates target user's token_key
+```
+
+**Remote Reset Password**:
+```python
+@router.post("/remote-reset-password")
+def remote_reset_password(
+    current_user: CurrentUserDep,  # Admin
+    request: RemoteResetPasswordRequest,  # { user_id: UUID }
+    user_service: UserServiceDep,
+) -> RemoteResetPasswordResponse:
+    # Admin resets password, returns temporary password
+    new_password = user_service.remote_reset_password(current_user, request)
+    return RemoteResetPasswordResponse(temporary_password=new_password)
+```
+
+---
+
+## Authorization: Role-based Access Control
+
+fs-backend implements **Role-based Access Control (RBAC)** with two role levels:
+
+### 1. Superuser Role
+
+**Characteristics**:
+- `user.is_superuser == True`
+- Typically administrators or system operators
+- Unrestricted access to all resources
+
+**Permissions**:
+```
+✓ View all users and employees
+✓ Create, update, delete any user
+✓ Create, update, delete employees
+✓ Manage time entries for any employee
+✓ Manage absence entries for any employee
+✓ Access setup endpoints
+✓ Remote logout users
+✓ Remote reset passwords
+```
+
+### 2. Regular User Role
+
+**Characteristics**:
+- `user.is_superuser == False`
+- May or may not have an associated employee profile
+
+**Permissions (Non-Employee User)**:
+```
+✓ View own profile (/me)
+✓ Change own password
+✗ Cannot view other users
+✗ Cannot create employees
+✗ Cannot manage time entries
+```
+
+**Permissions (Employee User with Supervisor)**:
+```
+✓ View own profile (/me)
+✓ View own employee profile
+✓ Change own password
+✓ Create time entries for self
+✓ Create absence entries for self
+✓ View own time/absence entries
+✓ Create time entries for subordinates
+✓ Create absence entries for subordinates
+✓ View subordinate employee profiles
+✓ View subordinate time/absence entries
+✗ Cannot view unrelated employees
+```
+
+### Authorization Check Patterns
+
+**Pattern 1: Superuser Guard**:
+```python
+def delete_user(user: User, target_id: UUID):
+    if not user.is_superuser:
+        raise UserNotAuthorizedError()
+    # Perform deletion
+```
+
+**Pattern 2: Hierarchy Check**:
+```python
+def create_time_entry_for_employee(
+    actor: User, employee_id: UUID, entry: TimeEntryCreate
+):
+    target_employee = get_employee_by_id(employee_id)
+    
+    if actor.is_superuser:
+        # Superusers can create for anyone
+        return create_entry(target_employee, entry)
+    
+    if not actor.employee:
+        raise UserNotAuthorizedError()
+    
+    # Check if actor supervises target
+    if not is_supervisor_of(actor.employee, target_employee):
+        raise UserNotAuthorizedError()
+    
+    return create_entry(target_employee, entry)
+```
+
+**Pattern 3: Visibility Check**:
+```python
+def get_user_info(actor: User, user_id: UUID):
+    target_user = get_user_by_id(user_id)
+    
+    if actor.is_superuser:
+        return target_user  # Superusers see all
+    
+    # Non-superusers can only see employees
+    if not target_user.employee:
+        raise UserNotAuthorizedError()
+    
+    # And only if in their hierarchy
+    if actor.employee and is_supervisor_of(actor.employee, target_user.employee):
+        return target_user
+    
+    raise UserNotAuthorizedError()
+```
+
+---
+
+## Authorization Endpoints
+
+### Remote Logout All Sessions
+
+**Purpose**: Admin invalidates all sessions for a user (e.g., employee leaves company)
+
+```bash
+curl -X POST http://127.0.0.1:3001/auth/remote-logout-all \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "550e8400-e29b-41d4-a716-446655440000"}'
+```
+
+**Response**: `204 No Content`
+
+### Remote Reset Password
+
+**Purpose**: Admin resets password and receives temporary password
+
+```bash
+curl -X POST http://127.0.0.1:3001/auth/remote-reset-password \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "550e8400-e29b-41d4-a716-446655440000"}'
+```
+
+**Response**:
+```json
+{
+  "temporary_password": "Tr0pic@lWxY9#Kp2"
+}
+```
+
+User then logs in with username + temporary password and must change it.
+
+---
+
+## Password Policy
+
+### Creation & Update Rules
+
+**Username**:
+- Minimum 4 characters
+- No whitespace allowed
+- Must be unique
+
+**Password**:
+- Minimum 8 characters
+- Must contain uppercase, lowercase, digits, punctuation (on generation)
+- No reuse of current password
+
+**Implementation**:
+```python
+@staticmethod
+def _validate_password(password: str):
+    if not password:
+        raise ValidationError("Password cannot be empty")
+    if len(password) < 8:
+        raise ValidationError("Password must be at least 8 characters")
+
+# On change:
+if current_password == new_password:
+    raise ValidationError("New password must differ from current")
+```
+
+### Secure Password Generation
+
+```python
+def generate_secure_password_with_requirements(length: int = 16) -> str:
+    """Generates random password with uppercase, lowercase, digits, punctuation"""
+    # Ensures at least one of each type
+    password = [
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.digits),
+        secrets.choice(string.punctuation),
+    ]
+    
+    # Fill remainder randomly
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password += [secrets.choice(characters) for _ in range(length - 4)]
+    
+    # Shuffle to avoid predictable pattern
+    secrets.SystemRandom().shuffle(password)
+    
+    return "".join(password)
+```
+
+Used for admin-initiated password resets.
+
+---
+
+## Security Best Practices
+
+### For Developers
+
+1. **Never log tokens**: Don't include tokens in logs or error messages
+   ```python
+   # ✗ BAD
+   logger.info(f"Token received: {token}")
+   
+   # ✓ GOOD
+   logger.info("Token received and validated")
+   ```
+
+2. **Validate early**: Validate input at API layer
+   ```python
+   # Pydantic automatically validates request bodies
+   def login(request: LoginRequest):  # Validates username/password
+       ...
+   ```
+
+3. **Use strong secrets**: Generate 32+ character random secrets
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+4. **Rotate secrets regularly**: Change JWT_SECRET_KEY periodically
+   - Invalidates old tokens on next rotation
+   - Use a key management system in production
+
+5. **Audit admin actions**: Log all remote operations
+   - Who: Admin user ID
+   - What: Remote logout/password reset
+   - When: Timestamp
+   - Target: User ID affected
+
+### For Administrators
+
+1. **Protect .env file**: Never commit to version control
+   ```bash
+   echo ".env" >> .gitignore
+   chmod 600 .env  # Read-only for owner
+   ```
+
+2. **Use strong JWT_SECRET_KEY**: At least 32 random characters
+   - Not a password or default value
+   - Different for each environment
+   - Stored securely (secrets manager, .env, environment variable)
+
+3. **Enforce HTTPS in production**: Always use TLS/SSL
+   - Prevents token interception
+   - Use certificates from trusted CAs
+   - Configure HSTS headers
+
+4. **Implement rate limiting**: On authentication endpoints
+   ```
+   /auth/login - Max 5 failed attempts per 15 minutes
+   /auth/register - Max 10 per hour per IP
+   /auth/refresh - Max 100 per hour per user
+   ```
+
+5. **Monitor token usage**: Alert on suspicious patterns
+   - Same user token used from multiple IPs simultaneously
+   - Unusual time entry modifications
+   - Frequent password changes
+
+6. **Regular password audits**: Check for weak or default passwords
+   - Force password change for inactive users
+   - Implement password expiry if required
+
+### For End Users
+
+1. **Keep tokens private**: Don't share tokens in chat/email
+2. **Use logout**: Always logout when done, especially on shared devices
+3. **Monitor active sessions**: Use `/auth/logout-all` if suspicious activity
+4. **Change password regularly**: Update password every 90 days recommended
+5. **Report suspicious activity**: To administrators immediately
+
+---
+
+## Troubleshooting
+
+### "Invalid authentication credentials"
+**Cause**: Bearer token is invalid, expired, or revoked
+**Solutions**:
+1. Check token format: `Authorization: Bearer <token>`
+2. Use `/auth/refresh` to get new token
+3. Re-login if token expired: `/auth/login`
+
+### "Token has been revoked"
+**Cause**: User changed password or logged out all devices
+**Solutions**:
+1. Re-login with current credentials
+2. Request password reset from admin
+
+### "Not authorized to perform this action"
+**Cause**: User lacks required permissions
+**Solutions**:
+1. Check user role (superuser? employee?)
+2. Check hierarchy relationship (supervisor?)
+3. Request admin to grant permissions
+
+### "User not found"
+**Cause**: User deleted after token was issued
+**Solutions**:
+1. Contact administrator
+2. Create new account and re-login
+
+---
+
+*Last Updated: November 7, 2025*### The Token Version Strategy
 
 **Problem**: JWTs are stateless and cannot be revoked without maintaining a blacklist.
 

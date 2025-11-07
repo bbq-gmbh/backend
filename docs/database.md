@@ -1,125 +1,291 @@
 # Database Schema
 
-Database schema documentation for fs-backend.
+Complete database schema documentation for fs-backend.
 
 ## Overview
 
-**Database Type**: SQLite (development), PostgreSQL-ready  
-**ORM**: SQLModel (combines Pydantic + SQLAlchemy)  
-**Schema Management**: Auto-created on startup (no migrations for MVP)
+**Database ORM**: SQLModel (Pydantic + SQLAlchemy)  
+**Schema Management**: Auto-created on startup from SQLModel models  
+**Supported Databases**: 
+- SQLite (default for development)
+- PostgreSQL (recommended for production)
 
 ---
 
 ## Entity Relationship Diagram
 
 ```
-┌─────────────────────────┐
-│         User            │
-├─────────────────────────┤
-│ id (PK)                 │ UUID
-│ username (UNIQUE)       │ String
-│ hashed_password         │ String
-│ token_version           │ UUID
-│ created_at              │ DateTime
-│ updated_at              │ DateTime
-└─────────────────────────┘
-
-┌─────────────────────────┐
-│       Employee          │  (Future use)
-├─────────────────────────┤
-│ id (PK)                 │ UUID
-│ user_id (FK)            │ UUID → User.id
-│ first_name              │ String
-│ last_name               │ String
-│ ...                     │
-└─────────────────────────┘
+┌────────────────┐         ┌──────────────────┐
+│     users      │         │    employees     │
+├────────────────┤         ├──────────────────┤
+│ id (PK, UUID)  │◄────────┤ user_id (FK)     │
+│ username       │         │ first_name       │
+│ password_hash  │         │ last_name        │
+│ token_key      │         │ birthday         │
+│ is_superuser   │         │ hour_model       │
+│ created_at     │         │ pause_time_min   │
+│ updated_at     │         │ start_from       │
+└────────────────┘         │ supervisor_id(FK)│
+         │                 └──────────────────┘
+         │                          │
+         │                          │ self-reference
+         │                          │ (hierarchy)
+         │                          │
+    ┌────┴────────┐                └─┬──┐
+    │             │                  │  │
+┌───▼────────────┐  ┌───────────────▼┐ │
+│  time_entries  │  │ employee_hier..│ │
+├───────────────┐│  └─────────────────┘ │
+│ id (PK)       ││                      │
+│ user_id (FK)  ││  ┌──────────────────┐│
+│ entry_type    ││  │absence_entries   ││
+│ date_time     ││  ├──────────────────┤│
+│ created_by(FK)││  │ id (PK)          ││
+│ created_at    ││  │ user_id (FK)     ││
+└────────────────┤  │ entry_type       ││
+                 │  │ date_begin       ││
+                 │  │ date_end         ││
+                 │  │ created_by (FK)  ││
+                 │  │ created_at       ││
+                 │  └──────────────────┘│
+                 │                      │
+                 └──────────────────────┘
 ```
 
 ---
 
 ## Tables
 
-### Users Table
+### users
+
+**Purpose**: Authentication principal and user account storage
 
 **Table Name**: `users`
 
-**Purpose**: Store user accounts for authentication and identification.
-
-**Schema**:
-
 | Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
+|--------|------|-----------|-------------|
 | `id` | UUID | PRIMARY KEY | Unique user identifier |
-| `username` | VARCHAR(255) | NOT NULL, UNIQUE | User's login name |
-| `hashed_password` | VARCHAR(255) | NOT NULL | bcrypt hashed password |
-| `token_version` | UUID | NOT NULL | Rotating token invalidation key |
-| `created_at` | DATETIME | NOT NULL, DEFAULT NOW | Account creation timestamp |
-| `updated_at` | DATETIME | NOT NULL, DEFAULT NOW, ON UPDATE NOW | Last modification timestamp |
+| `username` | VARCHAR | UNIQUE, NOT NULL, INDEX | Login identifier (≥4 chars, no spaces) |
+| `password_hash` | VARCHAR | NOT NULL | Bcrypt hashed password (60 chars) |
+| `token_key` | UUID | NOT NULL, INDEX | Current token version for invalidation |
+| `is_superuser` | BOOLEAN | NOT NULL, DEFAULT FALSE | Admin role flag |
+| `created_at` | DATETIME | NOT NULL, DEFAULT NOW() | Account creation timestamp |
+| `updated_at` | DATETIME | NOT NULL, DEFAULT NOW() | Last update timestamp |
 
 **Indexes**:
-- Primary key on `id`
-- Unique index on `username`
-- Index on `token_version` (for JWT validation queries)
+```sql
+CREATE UNIQUE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_token_key ON users(token_key);
+```
 
-**Model Definition** (`src/models/user.py`):
+**Model Definition** (`app/models/user.py`):
 ```python
-from sqlmodel import Field, SQLModel
-from datetime import datetime
-from uuid import uuid4, UUID
-
 class User(SQLModel, table=True):
     __tablename__ = "users"
-    
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    username: str = Field(unique=True, index=True, nullable=False)
-    hashed_password: str = Field(nullable=False)
-    token_version: UUID = Field(default_factory=uuid4, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    username: str = Field(unique=True, index=True)
+    password_hash: str
+    token_key: uuid.UUID = Field(default_factory=uuid.uuid4, index=True)
+    is_superuser: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column_kwargs={"onupdate": datetime.utcnow},
-        nullable=False
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
+    employee: Optional["Employee"] = Relationship(back_populates="user", cascade_delete=True)
+```
+
+**Sample Data**:
+```sql
+INSERT INTO users (id, username, password_hash, token_key, is_superuser) VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'john.doe', '$2b$12$...', 'abc12345...', FALSE),
+  ('550e8400-e29b-41d4-a716-446655440099', 'admin.user', '$2b$12$...', 'xyz98765...', TRUE);
+```
+
+---
+
+### employees
+
+**Purpose**: Employee profile with work configuration and hierarchy
+
+**Table Name**: `employees`
+
+| Column | Type | Constraints | Description |
+|--------|------|-----------|-------------|
+| `user_id` | UUID | PRIMARY KEY, FOREIGN KEY → users.id | Link to user account |
+| `first_name` | VARCHAR | NOT NULL | Employee first name |
+| `last_name` | VARCHAR | NOT NULL | Employee last name |
+| `supervisor_id` | UUID | FOREIGN KEY → employees.user_id, INDEX, NULLABLE | Manager/supervisor (self-join hierarchy) |
+| `birthday` | DATE | NOT NULL | Date of birth |
+| `hour_model` | ENUM | NOT NULL | Work hours model (e30=30h, e35=35h, e40=40h) |
+| `pause_time_minutes` | INTEGER | NOT NULL | Daily break duration in minutes |
+| `start_from` | DATE | NOT NULL | Contract/employment start date |
+
+**Enums**:
+```python
+class HourModel(Enum):
+    e30 = 6   # 30 hours/week
+    e35 = 7   # 35 hours/week
+    e40 = 8   # 40 hours/week
+```
+
+**Model Definition** (`app/models/employee.py`):
+```python
+class Employee(SQLModel, table=True):
+    __tablename__ = "employees"
+    user_id: uuid.UUID = Field(primary_key=True, foreign_key="users.id")
+    first_name: str
+    last_name: str
+    supervisor_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="employees.user_id", index=True
+    )
+    birthday: date
+    hour_model: HourModel
+    pause_time_minutes: int
+    start_from: date
+
+    user: "User" = Relationship(back_populates="employee")
+    supervisor: Optional["Employee"] = Relationship(
+        back_populates="subordinates",
+        sa_relationship_kwargs={"remote_side": "Employee.user_id"},
+    )
+    subordinates: list["Employee"] = Relationship(back_populates="supervisor")
+```
+
+**Relationships**:
+- Many-to-One: `Employee.supervisor_id` → `Employee.user_id` (self-join for hierarchy)
+- One-to-Many: `Employee.subordinates` ← reverse relationship
+- One-to-One: `Employee.user` → `User`
+
+**Sample Data**:
+```sql
+INSERT INTO employees (user_id, first_name, last_name, supervisor_id, birthday, hour_model, pause_time_minutes, start_from) VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'John', 'Doe', NULL, '1990-05-15', 8, 30, '2024-01-15'),
+  ('550e8400-e29b-41d4-a716-446655440001', 'Jane', 'Smith', '550e8400-e29b-41d4-a716-446655440000', '1992-03-22', 8, 30, '2024-02-01');
+```
+
+---
+
+### time_entries
+
+**Purpose**: Track arrival and departure times for employees
+
+**Table Name**: `time_entries`
+
+| Column | Type | Constraints | Description |
+|--------|------|-----------|-------------|
+| `id` | INTEGER | PRIMARY KEY, AUTO_INCREMENT | Unique entry identifier |
+| `user_id` | UUID | FOREIGN KEY → employees.user_id, INDEX | Which employee |
+| `entry_type` | ENUM | NOT NULL | "arrival" or "departure" |
+| `date_time` | DATETIME | NOT NULL, INDEX | When the entry was recorded |
+| `created_by` | UUID | FOREIGN KEY → users.id, INDEX | Who created the entry |
+| `created_at` | DATETIME | NOT NULL, DEFAULT NOW(), INDEX | Timestamp of creation |
+
+**Enums**:
+```python
+class TimeEntryType(Enum):
+    Arrival = "arrival"
+    Departure = "departure"
+```
+
+**Model Definition** (`app/models/time_entry.py`):
+```python
+class TimeEntry(SQLModel, table=True):
+    __tablename__ = "time_entries"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="employees.user_id", index=True)
+    entry_type: TimeEntryType
+    date_time: datetime = Field(index=True)
+    created_by: uuid.UUID = Field(foreign_key="users.id", index=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), index=True
+    )
+    employee: "Employee" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "TimeEntry.user_id"}
+    )
+    creator: "User" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "TimeEntry.created_by"}
     )
 ```
 
 **Sample Data**:
 ```sql
-INSERT INTO users (id, username, hashed_password, token_version, created_at, updated_at)
-VALUES (
-    '123e4567-e89b-12d3-a456-426614174000',
-    'johndoe',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyW3wz.cYkTy',
-    '987fcdeb-51a2-43f7-b890-123456789abc',
-    '2025-10-10 12:00:00',
-    '2025-10-10 12:00:00'
-);
+INSERT INTO time_entries (user_id, entry_type, date_time, created_by, created_at) VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'arrival', '2025-11-07 08:30:00', '550e8400-e29b-41d4-a716-446655440000', NOW()),
+  ('550e8400-e29b-41d4-a716-446655440000', 'departure', '2025-11-07 17:30:00', '550e8400-e29b-41d4-a716-446655440000', NOW());
 ```
 
 ---
 
-### Employee Table (Future)
+### absence_entries
 
-**Table Name**: `employees`
+**Purpose**: Track absence periods (sickness, vacation, etc.)
 
-**Purpose**: Extended profile information for users (future feature).
-
-**Schema**:
+**Table Name**: `absence_entries`
 
 | Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | UUID | PRIMARY KEY | Unique employee identifier |
-| `user_id` | UUID | FOREIGN KEY → users(id), UNIQUE | Associated user account |
-| `first_name` | VARCHAR(255) | NOT NULL | Employee's first name |
-| `last_name` | VARCHAR(255) | NOT NULL | Employee's last name |
-| `email` | VARCHAR(255) | UNIQUE | Work email address |
-| `department` | VARCHAR(100) | NULL | Department name |
-| `position` | VARCHAR(100) | NULL | Job title/position |
-| `hire_date` | DATE | NULL | Date of hire |
-| `created_at` | DATETIME | NOT NULL, DEFAULT NOW | Record creation |
-| `updated_at` | DATETIME | NOT NULL, ON UPDATE NOW | Last update |
+|--------|------|-----------|-------------|
+| `id` | INTEGER | PRIMARY KEY, AUTO_INCREMENT | Unique entry identifier |
+| `user_id` | UUID | FOREIGN KEY → employees.user_id, INDEX | Which employee |
+| `entry_type` | ENUM | NOT NULL | Type of absence (sickness, vacation, other) |
+| `date_begin` | DATE | NOT NULL, INDEX | Start date of absence |
+| `date_end` | DATE | NOT NULL, INDEX | End date of absence (inclusive) |
+| `created_by` | UUID | FOREIGN KEY → users.id, INDEX | Who created the entry |
+| `created_at` | DATETIME | NOT NULL, DEFAULT NOW(), INDEX | Timestamp of creation |
 
-**Relationships**:
-- One-to-one with `User` via `user_id`
+**Enums**:
+```python
+class AbsenceEntryType(Enum):
+    Sickness = "sickness"
+    Vacation = "vacation"
+    Other = "other"
+```
+
+**Model Definition** (`app/models/absence_entry.py`):
+```python
+class AbsenceEntry(SQLModel, table=True):
+    __tablename__ = "absence_entries"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="employees.user_id", index=True)
+    entry_type: AbsenceEntryType
+    date_begin: date = Field(index=True)
+    date_end: date = Field(index=True)
+    created_by: uuid.UUID = Field(foreign_key="users.id", index=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), index=True
+    )
+    employee: "Employee" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "AbsenceEntry.user_id"}
+    )
+    creator: "User" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "AbsenceEntry.created_by"}
+    )
+```
+
+**Sample Data**:
+```sql
+INSERT INTO absence_entries (user_id, entry_type, date_begin, date_end, created_by, created_at) VALUES
+  ('550e8400-e29b-41d4-a716-446655440000', 'vacation', '2025-11-10', '2025-11-14', '550e8400-e29b-41d4-a716-446655440099', NOW()),
+  ('550e8400-e29b-41d4-a716-446655440000', 'sickness', '2025-11-03', '2025-11-03', '550e8400-e29b-41d4-a716-446655440000', NOW());
+```
+
+---
+
+### employee_hierarchy *(optional, for caching)*
+
+**Purpose**: Cache employee supervisor chains for performance optimization
+
+**Table Name**: `employee_hierarchy`
+
+| Column | Type | Constraints | Description |
+|--------|------|-----------|-------------|
+| `employee_id` | UUID | FOREIGN KEY → employees.user_id, PRIMARY KEY (part 1) | Employee in hierarchy |
+| `supervisor_id` | UUID | FOREIGN KEY → employees.user_id, PRIMARY KEY (part 2) | Supervisor in chain |
+| `distance` | INTEGER | NOT NULL | Hierarchical distance (1=direct supervisor, 2=super's supervisor) |
+
+**Purpose**: Materialized view of hierarchy chains for fast "is_supervisor_of" queries
+
+**Note**: This table is derived data; can be rebuilt if corrupted using stored procedures or application logic.
 
 ---
 
@@ -127,94 +293,93 @@ VALUES (
 
 ### UUID Fields
 
-**Purpose**: Unique identifiers that are globally unique and non-sequential.
+**Purpose**: Globally unique, non-sequential identifiers
 
-**Format**: `123e4567-e89b-12d3-a456-426614174000` (UUID v4)
+**Format**: RFC 4122 UUID v4  
+**Example**: `550e8400-e29b-41d4-a716-446655440000`
 
 **Benefits**:
-- No sequential ID exposure
-- Safe for distributed systems
-- Impossible to enumerate users
+- ✅ Globally unique across systems
+- ✅ No sequential ID exposure (security)
+- ✅ Safe for distributed systems
+- ✅ Impossible to enumerate
 
 **Generation**:
 ```python
 from uuid import uuid4
-
-user_id = uuid4()  # Generates new UUID
+user_id = uuid4()  # New UUID
 ```
 
 ### Password Hashing
 
-**Algorithm**: bcrypt with cost factor 12
+**Algorithm**: bcrypt (adaptive hashing)
 
 **Format**: `$2b$12$<salt><hash>` (60 characters)
 
-**Example**:
-```
-$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyW3wz.cYkTy
-```
+**Example**: `$2b$12$R9h7cIPz0gi.URNNF3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUe`
 
 **Breakdown**:
-- `$2b$` - bcrypt version identifier
-- `12` - Cost factor (2^12 iterations)
-- Next 22 chars - Salt
-- Remaining chars - Hash
+- `$2b$` - bcrypt version
+- `12` - Cost factor (2^12 = 4096 iterations)
+- Next 22 chars - Random salt
+- Remaining - Salted hash
 
-**Security**:
-- Each password has unique salt
-- Cost factor adjustable for future-proofing
-- Slow by design (resistant to brute force)
+**Features**:
+- ✅ Unique salt per password
+- ✅ Slow by design (resistant to brute force)
+- ✅ Cost adjustable for future hardware changes
+- ✅ Standard bcrypt format
 
-### Token Version
+### Token Key
 
-**Purpose**: Enable stateless token invalidation.
+**Purpose**: Enable stateless token invalidation without Redis
 
-**Type**: UUID v4
+**Type**: UUID v4  
+**Storage**: User.token_key column
 
-**Behavior**:
-- Generated on user creation
-- Rotated on:
-  - Logout all devices (`POST /auth/logout-all`)
-  - Password change (`POST /auth/change-password`)
-- Embedded in JWT tokens
-- Validated on every protected request
-
-**Flow**:
+**Mechanism**:
 ```python
-# Token creation
-token_claims = {
+# On token creation
+token_payload = {
     "sub": user.id,
-    "token_version": user.token_version,  # ← Embedded
-    ...
+    "key": user.token_key,  # ← Embed current version
+    "exp": ...,
 }
 
-# Token validation
-if token_claims["token_version"] != user.token_version:
-    raise TokenInvalidatedError()  # Version mismatch
+# On token validation
+if token.key != user.token_key:  # Version mismatch
+    raise TokenRevokedError()  # Token invalidated
+```
+
+**Rotation** (logout or password change):
+```python
+user.token_key = uuid.uuid4()  # New version
+session.commit()  # All old tokens now invalid
 ```
 
 ### Timestamps
 
-**Fields**: `created_at`, `updated_at`
+**Format**: ISO 8601 with timezone (UTC)  
+**Example**: `2025-11-07T10:30:00Z`
 
-**Type**: `DATETIME` (stored in UTC)
-
-**Behavior**:
+**Fields**:
 - `created_at`: Set once on record creation
-- `updated_at`: Automatically updated on record modification
+- `updated_at`: Updated on record modification
 
-**SQLModel Implementation**:
+**Implementation**:
 ```python
-from datetime import datetime
+from datetime import datetime, timezone
 
-created_at: datetime = Field(default_factory=datetime.utcnow)
+created_at: datetime = Field(
+    default_factory=lambda: datetime.now(timezone.utc)
+)
 updated_at: datetime = Field(
-    default_factory=datetime.utcnow,
-    sa_column_kwargs={"onupdate": datetime.utcnow}
+    default_factory=lambda: datetime.now(timezone.utc),
+    sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
 )
 ```
 
-**⚠️ Note**: `onupdate` may not work as expected in all databases. Consider handling in application logic if issues arise.
+**Time Zone**: All timestamps stored in UTC. Frontend handles local conversion.
 
 ---
 

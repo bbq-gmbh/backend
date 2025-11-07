@@ -4,36 +4,24 @@ Environment variables and application configuration for fs-backend.
 
 ## Overview
 
-fs-backend uses environment variables for configuration, loaded via `python-dotenv` from a `.env` file.
+fs-backend uses environment variables for configuration, loaded via `python-dotenv` from a `.env` file (development) or system environment variables (production).
 
-**Configuration File**: `src/config/settings.py`
+**Configuration Module**: `app/config/settings.py`
 
 ---
 
 ## Environment Variables
 
-### Required Variables
+### Database Configuration
 
-| Variable | Type | Description | Example |
-|----------|------|-------------|---------|
-| `DATABASE_URL` | string | Database connection string | `sqlite:///./dev.db` |
-| `SECRET_KEY` | string | JWT signing key (32+ chars) | `your-secret-key-min-32-chars...` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | integer | Access token lifetime (minutes) | `15` |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | integer | Refresh token lifetime (days) | `7` |
-| `DEBUG` | boolean | Enable debug mode | `true` or `false` |
+| Variable | Required | Default | Type | Description |
+|----------|----------|---------|------|-------------|
+| `DATABASE_URL` | ✅ Yes | `sqlite:///.temp/database.db` | string | Database connection URL |
+| `TESTING` | No | `0` | boolean | Set to `1` to skip .env loading (for tests) |
 
----
-
-## Configuration Details
-
-### DATABASE_URL
-
-**Purpose**: Specify database connection.
-
-**Format**: `dialect://username:password@host:port/database`
+**DATABASE_URL Format**: `dialect://username:password@host:port/database`
 
 **Examples**:
-
 ```env
 # SQLite (development)
 DATABASE_URL=sqlite:///./dev.db
@@ -41,62 +29,368 @@ DATABASE_URL=sqlite:///./dev.db
 # PostgreSQL (production)
 DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 
-# PostgreSQL with async support
+# PostgreSQL with async
 DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname
 ```
 
-**Notes**:
-- SQLite uses relative path: `./dev.db` creates file in project root
-- PostgreSQL requires database to exist before running app
-- Use connection pooling settings for production
+### Authentication Configuration
 
----
+| Variable | Required | Default | Type | Description |
+|----------|----------|---------|------|-------------|
+| `JWT_SECRET_KEY` | ✅ Yes | `test-secret-key-change-in-production` | string | JWT signing secret (min 32 chars) |
+| `JWT_ALGORITHM` | No | `HS256` | string | JWT signing algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `30` | integer | Access token lifetime |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | integer | Refresh token lifetime |
 
-### SECRET_KEY
-
-**Purpose**: Sign and verify JWT tokens.
-
-**Requirements**:
-- Minimum 32 characters (recommended 64+)
+**JWT_SECRET_KEY Requirements**:
+- Minimum 32 characters (64+ recommended)
 - Cryptographically random
-- **Never commit to version control**
+- Never commit to version control
+- Different for each environment
 
 **Generate Secure Key**:
-
 ```bash
-# Using Python
+# Python
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 
-# Using OpenSSL
+# OpenSSL
 openssl rand -base64 32
-
-# Using PowerShell
-[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Minimum 0 -Maximum 256 }))
 ```
 
-**Example**:
-```env
-SECRET_KEY=9KvR7X2mP4nL8wQ5tY6uZ3sA1bC0dE7fG9hJ2kM4nP6qR8sT1vW3xY5zA7bC9dE
-```
+### Application Configuration
 
-**⚠️ Security Warning**:
-- Change default key immediately
-- Use different keys for dev/staging/production
-- Rotate keys periodically
-- If key is compromised, all tokens become invalid upon rotation
+| Variable | Required | Default | Type | Description |
+|----------|----------|---------|------|-------------|
+| `EMPLOYEE_MAX_HIRARCHY_LEVELS` | No | `20` | integer | Maximum hierarchy depth |
+| `TIME_ENTRY_MAX_ENTRIES_PER_DAY` | No | `20` | integer | Max time entries per day |
+| `TIME_ENTRY_EDIT_MAX_DAYS` | No | `7` | integer | Days allowed for editing past entries |
 
 ---
 
-### ACCESS_TOKEN_EXPIRE_MINUTES
+## Configuration by Environment
 
-**Purpose**: Set access token lifetime.
+### Development
 
-**Default**: `15` minutes
+**.env file example**:
+```env
+# Database (SQLite for simplicity)
+DATABASE_URL=sqlite:///./dev.db
 
-**Recommendation**:
-- Development: 15-60 minutes
-- Production: 15-30 minutes
-- Higher security needs: 5-15 minutes
+# JWT (use test key, will print warning)
+JWT_SECRET_KEY=my-super-secret-development-key-change-in-production
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Application
+EMPLOYEE_MAX_HIRARCHY_LEVELS=20
+TIME_ENTRY_MAX_ENTRIES_PER_DAY=20
+TIME_ENTRY_EDIT_MAX_DAYS=7
+```
+
+**Notes**:
+- SQLite database auto-creates on first run
+- No migrations needed for development
+- Test keys acceptable (but should warn)
+- Verbose logging recommended
+
+### Staging
+
+**Environment Variables**:
+```bash
+export DATABASE_URL="postgresql://stage_user:stage_pass@staging-db.internal:5432/fs_backend_stage"
+export JWT_SECRET_KEY="$(openssl rand -base64 32)"
+export JWT_ALGORITHM="HS256"
+export ACCESS_TOKEN_EXPIRE_MINUTES="20"
+export REFRESH_TOKEN_EXPIRE_DAYS="3"
+```
+
+**Considerations**:
+- Use PostgreSQL for reliability
+- Shorter token lifetimes for safety
+- SSL required for database connections
+- Monitor logs for errors
+
+### Production
+
+**Environment Variables** (via secrets manager):
+```bash
+export DATABASE_URL="postgresql://prod_user:prod_pass@prod-db.example.com:5432/fs_backend_prod"
+export JWT_SECRET_KEY="<64-character cryptographically secure random string>"
+export JWT_ALGORITHM="HS256"
+export ACCESS_TOKEN_EXPIRE_MINUTES="15"
+export REFRESH_TOKEN_EXPIRE_DAYS="7"
+export EMPLOYEE_MAX_HIRARCHY_LEVELS="50"
+export TIME_ENTRY_MAX_ENTRIES_PER_DAY="30"
+export TIME_ENTRY_EDIT_MAX_DAYS="14"
+```
+
+**Security Requirements**:
+- Store secrets in secure manager (AWS Secrets Manager, HashiCorp Vault, etc.)
+- Never commit `.env` to version control
+- Use strong JWT_SECRET_KEY (64+ random characters)
+- HTTPS/TLS for all connections
+- Database SSL connections
+- Rate limiting on auth endpoints
+- Monitoring and alerting
+- Regular secret rotation
+
+---
+
+## Configuration Management
+
+### Development Setup
+
+**Create .env from template**:
+```bash
+# Option 1: Manual copy
+cp .env.template .env
+# Edit .env with your values
+
+# Option 2: Quick setup
+cat > .env << 'EOF'
+DATABASE_URL=sqlite:///./dev.db
+JWT_SECRET_KEY=dev-key-change-in-production-min-32-chars-required
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+EOF
+```
+
+**Verify configuration loads**:
+```bash
+uv run python -c "from app.config.settings import settings; print(settings.DATABASE_URL)"
+```
+
+### Environment-Specific Configurations
+
+**Create environment-specific .env files**:
+```
+.env                 # Development (git ignored)
+.env.staging         # Staging (for reference only, real settings in env vars)
+.env.production      # Production (for reference only, real settings in env vars)
+```
+
+**Use .env based on context**:
+```bash
+# Development
+python -m uvicorn app.main:app --reload
+
+# Staging (environment variables)
+DATABASE_URL=postgresql://... JWT_SECRET_KEY=... python -m uvicorn app.main:app
+
+# Production
+# Use container/OS environment variables or secrets manager
+docker run -e DATABASE_URL=postgresql://... -e JWT_SECRET_KEY=... app:latest
+```
+
+### Using Secrets Manager (Production)
+
+**AWS Secrets Manager Example**:
+```bash
+#!/bin/bash
+# Load secrets from AWS
+SECRET=$(aws secretsmanager get-secret-value --secret-id fs-backend-prod --query SecretString --output text)
+export DATABASE_URL=$(echo $SECRET | jq -r '.database_url')
+export JWT_SECRET_KEY=$(echo $SECRET | jq -r '.jwt_secret_key')
+export JWT_ALGORITHM=$(echo $SECRET | jq -r '.jwt_algorithm')
+
+# Run application
+uvicorn app.main:app --host 0.0.0.0 --port 3001
+```
+
+**Format of secret in AWS**:
+```json
+{
+  "database_url": "postgresql://...",
+  "jwt_secret_key": "...",
+  "jwt_algorithm": "HS256",
+  "access_token_expire_minutes": "15",
+  "refresh_token_expire_days": "7"
+}
+```
+
+---
+
+## Settings Class
+
+**File**: `app/config/settings.py`
+
+**Implementation**:
+```python
+class Settings:
+    """Application settings loaded from environment variables."""
+    
+    # Database
+    DATABASE_URL: str = _get_env("DATABASE_URL", "sqlite:///.temp/database.db")
+    
+    # JWT
+    JWT_SECRET_KEY: str = _get_env("JWT_SECRET_KEY", "test-secret-key...")
+    JWT_ALGORITHM: str = _get_env("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(_get_env("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(_get_env("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    
+    # Application
+    EMPLOYEE_MAX_HIRARCHY_LEVELS: int = 20
+    TIME_ENTRY_MAX_ENTRIES_PER_DAY: int = 20
+    TIME_ENTRY_EDIT_MAX_DAYS: int = 7
+
+settings = Settings()
+```
+
+**Usage in code**:
+```python
+from app.config.settings import settings
+
+def configure_database():
+    # Access settings
+    engine = create_engine(settings.DATABASE_URL)
+    return engine
+
+def issue_token(user: User):
+    expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    ...
+```
+
+---
+
+## Validation & Error Handling
+
+### Environment Variable Validation
+
+**Invalid Configuration Handling**:
+```python
+def _get_env(key: str, default: str | None = None) -> str:
+    """Gets an environment variable with optional default."""
+    value = os.getenv(key, default)
+    if value is None:
+        raise ValueError(f"Environment variable '{key}' not set.")
+    return value
+```
+
+**Example Error**:
+```
+ValueError: Environment variable 'JWT_SECRET_KEY' not set.
+```
+
+### Type Conversion
+
+**Integer Parsing**:
+```python
+ACCESS_TOKEN_EXPIRE_MINUTES: int = int(_get_env("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+```
+
+**If conversion fails**:
+```
+ValueError: invalid literal for int() with base 10: 'invalid'
+```
+
+### Best Practices
+
+1. **Always provide sensible defaults** (where appropriate)
+2. **Validate on startup** (fail fast if config is invalid)
+3. **Log configuration** (but never log secrets)
+4. **Type hints** for clarity
+5. **Document requirements** in README
+
+---
+
+## Security Checklist
+
+### Development
+- [ ] `.env` added to `.gitignore`
+- [ ] Use test/dummy values for secrets
+- [ ] Never commit real secrets
+- [ ] Change defaults if deploying anywhere
+
+### Staging
+- [ ] Unique secrets per environment
+- [ ] SSL for database connections
+- [ ] Audit access to configuration
+- [ ] Monitor configuration changes
+
+### Production
+- [ ] Secrets stored in secure manager (AWS Secrets Manager, Vault)
+- [ ] Strong, random JWT_SECRET_KEY (64+ characters)
+- [ ] SSL/TLS for all connections
+- [ ] Regular secret rotation policy
+- [ ] No hardcoded credentials anywhere
+- [ ] Audit logging for configuration access
+- [ ] Monitoring and alerting on failed auth
+- [ ] Database backups configured
+- [ ] Disaster recovery plan
+
+---
+
+## Troubleshooting
+
+### "Environment variable 'JWT_SECRET_KEY' not set"
+
+**Cause**: Missing required environment variable
+
+**Solution**:
+```bash
+# Check if variable is set
+echo $JWT_SECRET_KEY
+
+# Set in current session
+export JWT_SECRET_KEY="your-secret-key"
+
+# Or add to .env file
+echo "JWT_SECRET_KEY=your-secret-key" >> .env
+```
+
+### "DATABASE_URL not recognized"
+
+**Cause**: Invalid connection string format
+
+**Valid Formats**:
+```
+sqlite:///./dev.db              # SQLite
+postgresql://user:pass@host/db  # PostgreSQL
+mysql+pymysql://user:pass@host/db  # MySQL
+```
+
+**Test Connection**:
+```python
+from sqlalchemy import create_engine
+engine = create_engine(DATABASE_URL)
+with engine.connect() as conn:
+    result = conn.execute("SELECT 1")
+    print("Connection successful!")
+```
+
+### "Token expiry seems wrong"
+
+**Check Settings**:
+```bash
+# Print current settings
+uv run python -c "from app.config.settings import settings; print(f'Access: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} min, Refresh: {settings.REFRESH_TOKEN_EXPIRE_DAYS} days')"
+```
+
+**Verify Token**:
+```python
+import jwt
+from app.config.settings import settings
+
+token = "your_jwt_token"
+decoded = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+print(f"Expires: {decoded['exp']}")  # Unix timestamp
+```
+
+---
+
+## References
+
+- [Setup Guide - Environment Variables](setup.md#environment-variables-reference)
+- [Authentication - Security](authentication.md#security-best-practices)
+- [Database - PostgreSQL Setup](database.md)
+- [Python-dotenv Documentation](https://github.com/theskumar/python-dotenv)
+- [SQLAlchemy Connection Strings](https://docs.sqlalchemy.org/en/20/core/engines.html)
+
+---
+
+*Last Updated: November 7, 2025*
 
 **Trade-offs**:
 - **Shorter**: More secure (less window for stolen token use)
