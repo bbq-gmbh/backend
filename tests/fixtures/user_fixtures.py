@@ -1,9 +1,11 @@
 """User-related test fixtures."""
 
 import pytest
+from datetime import date
 from sqlmodel import Session
 
 from app.models.user import User
+from app.models.employee import Employee, HourModel
 from app.services.user import UserService
 from app.services.auth import AuthService
 from app.repositories.user import UserRepository
@@ -103,3 +105,22 @@ def superuser_client(client, superuser):
 
     client.headers = {"Authorization": f"Bearer {access_token}"}
     return client
+
+
+def create_test_employee(session: Session, user_id, first_name: str, last_name: str, supervisor_id=None):
+    """Helper function to create an Employee with required fields set to defaults."""
+    from datetime import date
+    from app.models.employee import Employee, HourModel
+    
+    employee = Employee(
+        user_id=user_id,
+        first_name=first_name,
+        last_name=last_name,
+        supervisor_id=supervisor_id,
+        birthday=date(1990, 1, 1),
+        hour_model=HourModel.e40,
+        pause_time_minutes=30,
+        start_from=date(2020, 1, 1),
+    )
+    session.add(employee)
+    return employee

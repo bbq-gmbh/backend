@@ -107,9 +107,9 @@ class TestPatchUser:
     def test_patch_user_employee_names(self, client, superuser_client, session):
         """Test updating employee names."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -121,12 +121,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(test_user)
 
-        employee = Employee(
-            user_id=test_user.id,
-            first_name="Original",
-            last_name="Name",
-        )
-        session.add(employee)
+        employee = create_test_employee(session, test_user.id, "Original", "Name")
         session.commit()
         hierarchy_repo.add_self_reference(employee)
 
@@ -149,9 +144,9 @@ class TestPatchUser:
     def test_patch_user_supervisor(self, client, superuser_client, session):
         """Test updating employee supervisor."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -164,12 +159,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(supervisor_user)
 
-        supervisor_emp = Employee(
-            user_id=supervisor_user.id,
-            first_name="Supervisor",
-            last_name="Person",
-        )
-        session.add(supervisor_emp)
+        supervisor_emp = create_test_employee(session, supervisor_user.id, "Supervisor", "Person")
         session.commit()
         hierarchy_repo.add_self_reference(supervisor_emp)
 
@@ -182,12 +172,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(emp_user)
 
-        employee = Employee(
-            user_id=emp_user.id,
-            first_name="Employee",
-            last_name="Person",
-        )
-        session.add(employee)
+        employee = create_test_employee(session, emp_user.id, "Employee", "Person")
         session.commit()
         hierarchy_repo.add_self_reference(employee)
 
@@ -213,9 +198,9 @@ class TestPatchUser:
     def test_patch_user_change_supervisor(self, client, superuser_client, session):
         """Test changing employee supervisor."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -231,17 +216,8 @@ class TestPatchUser:
         session.add_all([super1_user, super2_user])
         session.commit()
 
-        super1_emp = Employee(
-            user_id=super1_user.id,
-            first_name="Super1",
-            last_name="Person",
-        )
-        super2_emp = Employee(
-            user_id=super2_user.id,
-            first_name="Super2",
-            last_name="Person",
-        )
-        session.add_all([super1_emp, super2_emp])
+        super1_emp = create_test_employee(session, super1_user.id, "Super1", "Person")
+        super2_emp = create_test_employee(session, super2_user.id, "Super2", "Person")
         session.commit()
         hierarchy_repo.add_self_reference(super1_emp)
         hierarchy_repo.add_self_reference(super2_emp)
@@ -255,13 +231,8 @@ class TestPatchUser:
         session.commit()
         session.refresh(emp_user)
 
-        employee = Employee(
-            user_id=emp_user.id,
-            first_name="Changing",
-            last_name="Employee",
-            supervisor_id=super1_user.id,
-        )
-        session.add(employee)
+        employee = create_test_employee(session, emp_user.id, "Changing", "Employee")
+        employee.supervisor_id = super1_user.id
         session.commit()
         hierarchy_repo.add_self_reference(employee)
         
@@ -300,9 +271,9 @@ class TestPatchUser:
     def test_patch_user_remove_supervisor(self, client, superuser_client, session):
         """Test removing employee supervisor (set to None)."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -315,12 +286,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(supervisor_user)
 
-        supervisor_emp = Employee(
-            user_id=supervisor_user.id,
-            first_name="ToRemove",
-            last_name="Supervisor",
-        )
-        session.add(supervisor_emp)
+        supervisor_emp = create_test_employee(session, supervisor_user.id, "ToRemove", "Supervisor")
         session.commit()
         hierarchy_repo.add_self_reference(supervisor_emp)
 
@@ -333,13 +299,8 @@ class TestPatchUser:
         session.commit()
         session.refresh(emp_user)
 
-        employee = Employee(
-            user_id=emp_user.id,
-            first_name="NoSuper",
-            last_name="Employee",
-            supervisor_id=supervisor_user.id,
-        )
-        session.add(employee)
+        employee = create_test_employee(session, emp_user.id, "NoSuper", "Employee")
+        employee.supervisor_id = supervisor_user.id
         session.commit()
         hierarchy_repo.add_self_reference(employee)
         
@@ -377,9 +338,9 @@ class TestPatchUser:
     def test_patch_user_employee_without_supervisor_field(self, client, superuser_client, session):
         """Test that patching employee without new_supervisor_id field doesn't affect existing supervisor."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -392,12 +353,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(supervisor_user)
 
-        supervisor_emp = Employee(
-            user_id=supervisor_user.id,
-            first_name="Unchanged",
-            last_name="Supervisor",
-        )
-        session.add(supervisor_emp)
+        supervisor_emp = create_test_employee(session, supervisor_user.id, "Unchanged", "Supervisor")
         session.commit()
         hierarchy_repo.add_self_reference(supervisor_emp)
 
@@ -410,13 +366,8 @@ class TestPatchUser:
         session.commit()
         session.refresh(emp_user)
 
-        employee = Employee(
-            user_id=emp_user.id,
-            first_name="Employee",
-            last_name="WithSupervisor",
-            supervisor_id=supervisor_user.id,
-        )
-        session.add(employee)
+        employee = create_test_employee(session, emp_user.id, "Employee", "WithSupervisor")
+        employee.supervisor_id = supervisor_user.id
         session.commit()
         hierarchy_repo.add_self_reference(employee)
         
@@ -455,9 +406,9 @@ class TestPatchUser:
     def test_patch_user_prevents_circular_reference(self, client, superuser_client, session):
         """Test that patching user with circular supervisor reference is prevented."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -473,17 +424,8 @@ class TestPatchUser:
         session.add_all([emp1_user, emp2_user])
         session.commit()
 
-        emp1 = Employee(
-            user_id=emp1_user.id,
-            first_name="Employee",
-            last_name="One",
-        )
-        emp2 = Employee(
-            user_id=emp2_user.id,
-            first_name="Employee",
-            last_name="Two",
-        )
-        session.add_all([emp1, emp2])
+        emp1 = create_test_employee(session, emp1_user.id, "Employee", "One")
+        emp2 = create_test_employee(session, emp2_user.id, "Employee", "Two")
         session.commit()
         hierarchy_repo.add_self_reference(emp1)
         hierarchy_repo.add_self_reference(emp2)
@@ -523,9 +465,9 @@ class TestPatchUser:
     def test_patch_user_prevents_self_supervision(self, client, superuser_client, session):
         """Test that an employee cannot be assigned as their own supervisor."""
         from app.models.user import User
-        from app.models.employee import Employee
         from app.core.security import hash_password
         from app.repositories.employee_hierarchy import EmployeeHierarchyRepository
+        from tests.fixtures.user_fixtures import create_test_employee
 
         hierarchy_repo = EmployeeHierarchyRepository(session)
 
@@ -537,12 +479,7 @@ class TestPatchUser:
         session.commit()
         session.refresh(emp_user)
 
-        employee = Employee(
-            user_id=emp_user.id,
-            first_name="Self",
-            last_name="Supervisor",
-        )
-        session.add(employee)
+        employee = create_test_employee(session, emp_user.id, "Self", "Supervisor")
         session.commit()
         hierarchy_repo.add_self_reference(employee)
 

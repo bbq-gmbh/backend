@@ -34,16 +34,12 @@ def sample_users(session: Session) -> list[User]:
 
 @pytest.fixture
 def sample_employees(session: Session, sample_users: list[User]) -> list[Employee]:
+    from tests.fixtures.user_fixtures import create_test_employee
+    
     employees = [
-        Employee(
-            user_id=user.id,
-            first_name=f"First{i}",
-            last_name=f"Last{i}",
-        )
+        create_test_employee(session, user.id, f"First{i}", f"Last{i}")
         for i, user in enumerate(sample_users)
     ]
-    for emp in employees:
-        session.add(emp)
     session.commit()
     for emp in employees:
         session.refresh(emp)
